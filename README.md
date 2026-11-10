@@ -1,36 +1,29 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Wisdom Land Academy Digital Library
 
-## Getting Started
+## Local setup
 
-First, run the development server:
+Configure a PostgreSQL connection in `.env` as `DATABASE_URL`. Keep `.env` out of source control. Apply checked-in migrations with `npx prisma migrate deploy`, then regenerate the client with `npx prisma generate`.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+Create the first administrator from an interactive terminal after migrations are applied:
+
+```sh
+npm run db:create-admin
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+This one-time command prompts for username, full name, and a password (minimum 12 characters). Password input is hidden and stored as an Argon2id hash. It refuses to run once an administrator exists. It does not accept a role or password from application users.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Set `BOOK_STORAGE_DIR` to an absolute directory outside the repository's `public/` directory. Store book files there and put only relative paths in `Book.filePath`. Files are served through `/api/books/{id}/file` after session and permission checks; never place book files in `public/` or expose the storage directory through a web server.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Administrators manage PDF textbooks at `/admin/books`. Uploads are limited to 25 MB, checked for PDF MIME type and `%PDF-` signature, and saved under server-generated names. Students see books grouped by grade and subject only after an administrator grants an explicit book permission. Deletion is blocked while reading-progress records exist so progress is preserved. This phase uses the existing `Book`, `Subject`, `Grade`, `BookPermission`, and `ReadingProgress` models and needs no schema migration.
 
-## Learn More
+The storage resolver, PDF validation, and access policy are isolated so a future lesson or media resource can reuse the private storage and permission patterns. Live classes and video lessons are not part of this phase.
 
-To learn more about Next.js, take a look at the following resources:
+The login rate limit allows eight attempts per username and client IP in a 15-minute window, stored in PostgreSQL. The IP value uses the first `x-forwarded-for` value (or `x-real-ip`); configure the app behind a trusted proxy that overwrites these headers. User roles are loaded from the database, and protected server functions should call `requireUser()` or `requireRole()` before accessing data.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Development
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```sh
+npm run dev
+npm run lint
+npm run build
+```

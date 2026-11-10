@@ -1,0 +1,168 @@
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  TEACHER
+  STUDENT
+}
+
+enum SchoolContentKind {
+  ACTIVITY
+  ANNOUNCEMENT
+  STAFF_PROFILE
+  STUDENT_PROJECT
+}
+
+model Grade {
+  id          String            @id @default(cuid())
+  name        String            @unique
+  users       User[]
+  subjects    Subject[]
+  bookAccess  BookGradeAccess[]
+  createdAt   DateTime          @default(now())
+}
+
+model User {
+  id           String           @id @default(cuid())
+  username     String           @unique
+  passwordHash String
+  fullName     String
+  role         UserRole         @default(STUDENT)
+  gradeId      String?
+  grade        Grade?           @relation(fields: [gradeId], references: [id])
+  permissions  BookPermission[]
+  progress     ReadingProgress[]
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+  sessions Session[]
+}
+
+model Subject {
+  id      String @id @default(cuid())
+  name    String
+  gradeId String
+  grade   Grade  @relation(fields: [gradeId], references: [id])
+  books   Book[]
+
+  @@unique([name, gradeId])
+}
+
+enum BookType {
+  GRADE_BASED
+  GENERAL
+}
+
+model Book {
+  id                String           @id @default(cuid())
+  title             String
+  author            String?
+  description       String?
+  filePath          String
+  bookType          BookType         @default(GRADE_BASED)
+  subjectId         String?
+  coverImagePath    String?
+  accessAllStudents Boolean          @default(false)
+  isPublished       Boolean          @default(false)
+  subject           Subject?         @relation(fields: [subjectId], references: [id])
+  allowedGrades     BookGradeAccess[]
+  permissions       BookPermission[]
+  progress          ReadingProgress[]
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+}
+
+model BookGradeAccess {
+  id        String   @id @default(cuid())
+  bookId    String
+  gradeId   String
+  book      Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  grade     Grade    @relation(fields: [gradeId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([bookId, gradeId])
+}
+
+model SchoolContent {
+  id                      String            @id @default(cuid())
+  kind                    SchoolContentKind
+  title                   String
+  summary                 String?
+  body                    String?
+  displayName             String?
+  roleTitle               String?
+  eventDate               DateTime?
+  imagePath               String?
+  imageAlt                String?
+  isPublished             Boolean           @default(false)
+  consentConfirmed        Boolean           @default(false)
+  createdAt               DateTime          @default(now())
+  updatedAt               DateTime          @updatedAt
+
+  @@index([kind, isPublished, eventDate])
+  @@index([kind, isPublished, updatedAt])
+}
+
+model SchoolSettings {
+  id               String   @id @default("main")
+  aboutText        String?
+  contactPhone     String?
+  contactEmail     String?
+  contactAddress   String?
+  logoImagePath    String?
+  logoImageAlt     String?
+  heroImagePath    String?
+  heroImageAlt     String?
+  updatedAt        DateTime @updatedAt
+}
+
+model BookPermission {
+  id        String   @id @default(cuid())
+  userId    String
+  bookId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  book      Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, bookId])
+}
+
+model ReadingProgress {
+  id        String   @id @default(cuid())
+  userId    String
+  bookId    String
+  page      Int      @default(1)
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  book      Book     @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, bookId])
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model LoginAttempt {
+  keyHash     String   @id
+  attempts    Int      @default(0)
+  windowStart DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}

@@ -1,0 +1,13 @@
+export const READING_STATE_KEY: string;
+export const MAX_TRACKED_BOOKS: number;
+export const MAX_BOOKMARKS_PER_BOOK: number;
+export function emptyReadingState(): { v: 1; books: Record<string, { page: number; numPages: number; updatedAt: number; bookmarks: number[] }>; prefs: { zoom?: string } };
+export function isValidZoom(zoom: unknown): boolean;
+export function parseReadingState(raw: unknown): ReturnType<typeof emptyReadingState>;
+export function clampPage(page: unknown, numPages: number): number;
+export function recordProgress<T>(state: T, bookId: string, page: number, numPages: number, now?: number): T;
+export function toggleBookmark<T>(state: T, bookId: string, page: number, numPages?: number, now?: number): { state: T; added: boolean };
+export function setZoomPreference<T>(state: T, zoom: string): T;
+export function recentBookIds(state: ReturnType<typeof emptyReadingState>, limit?: number): string[];
+export function progressPercent(entry: { page: number; numPages: number } | undefined | null): number;
+export function viewerHash(options: { page?: number; zoom?: string }): string;
