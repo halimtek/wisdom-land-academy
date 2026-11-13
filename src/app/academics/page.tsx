@@ -3,7 +3,9 @@ import Link from 'next/link';
 import { prisma } from '@/lib/prisma';
 import { SchoolSite, SectionHeading } from '@/components/school-site';
 
-export const instant = false;
+// Cached (ISR). Admin edits refresh it immediately via revalidatePublicPages();
+// the 5-minute window only matters for changes made outside the admin pages.
+export const revalidate = 300;
 
 export default async function AcademicsPage() {
   const [settings, grades] = await Promise.all([

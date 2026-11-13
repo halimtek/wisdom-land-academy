@@ -2,8 +2,6 @@ import { ArrowUpRight, BookOpen } from 'lucide-react';
 import Link from 'next/link';
 import { requireRole } from '@/lib/auth';
 
-export const instant = false;
-
 export default async function AdminDashboardPage() {
   await requireRole('ADMIN');
 

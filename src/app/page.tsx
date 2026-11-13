@@ -17,7 +17,9 @@ import {
 } from '@/components/school-site';
 import { SchoolExperienceGallery, SchoolReveal } from '@/components/school-home-interactions';
 
-export const instant = false;
+// Cached (ISR). Admin edits refresh it immediately via revalidatePublicPages();
+// the 5-minute window only matters for changes made outside the admin pages.
+export const revalidate = 300;
 
 const exploreLinks = [
   {

@@ -4,7 +4,6 @@ import { pipeline } from 'node:stream/promises';
 import { Readable } from 'node:stream';
 import path from 'node:path';
 import * as z from 'zod';
-import { revalidatePath } from 'next/cache';
 import { NextResponse } from 'next/server';
 import { MAX_PDF_BYTES, validatePdfUpload } from '@/lib/book-security.mjs';
 import { getBookStorageRoot, removeStoredBook } from '@/lib/book-storage';
@@ -12,6 +11,7 @@ import { storeSchoolImage, removeSchoolImage } from '@/lib/school-media';
 import { getCurrentUser } from '@/lib/auth';
 import { roleIsAllowed } from '@/lib/auth-policy.mjs';
 import { prisma } from '@/lib/prisma';
+import { revalidatePublicPages } from '@/lib/revalidate-public';
 
 const MAX_MULTIPART_BYTES = MAX_PDF_BYTES + 1024 * 1024;
 const MetadataSchema = z.object({
@@ -166,8 +166,7 @@ export async function POST(request: Request) {
         });
       }
       if (generatedPath) await removeStoredBook(existingBook.filePath).catch(() => undefined);
-      revalidatePath('/');
-      revalidatePath('/library');
+      revalidatePublicPages();
       return NextResponse.json({ id: updated.id, message: 'Book updated.' });
     }
 
@@ -191,8 +190,7 @@ export async function POST(request: Request) {
         skipDuplicates: true,
       });
     }
-    revalidatePath('/');
-    revalidatePath('/library');
+    revalidatePublicPages();
     return NextResponse.json({ id: created.id, message: 'Book added.' }, { status: 201 });
   } catch {
     if (generatedPath) await removeStoredBook(generatedPath).catch(() => undefined);

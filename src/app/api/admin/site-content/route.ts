@@ -6,6 +6,7 @@ import { roleIsAllowed } from '@/lib/auth-policy.mjs';
 import { MAX_SCHOOL_IMAGE_BYTES, validateSchoolContentPublication, validateSchoolImageUpload } from '@/lib/school-content-security.mjs';
 import { removeSchoolImage, storeSchoolImage } from '@/lib/school-media';
 import { prisma } from '@/lib/prisma';
+import { revalidatePublicPages } from '@/lib/revalidate-public';
 
 const Kinds = ['ACTIVITY', 'ANNOUNCEMENT', 'STAFF_PROFILE', 'STUDENT_PROJECT'] as const;
 const MAX_FORM_BYTES = MAX_SCHOOL_IMAGE_BYTES + 512 * 1024;
@@ -164,6 +165,7 @@ async function writeContent(request: Request, update: boolean) {
       ? await prisma.schoolContent.update({ where: { id: result.content.contentId }, data, select: { id: true } })
       : await prisma.schoolContent.create({ data, select: { id: true } });
     if (previousImage && (imagePath || result.removeImage)) await removeSchoolImage(previousImage).catch(() => undefined);
+    revalidatePublicPages();
     return NextResponse.json({ id: saved.id, message: update ? 'Website content updated.' : 'Website content created.' }, { status: update ? 200 : 201 });
   } catch {
     if (imagePath) await removeSchoolImage(imagePath).catch(() => undefined);
@@ -179,6 +181,7 @@ export async function DELETE(request: Request) {
   const item = await prisma.schoolContent.findUnique({ where: { id: parsed.data.contentId }, select: { id: true, imagePath: true } });
   if (!item) return NextResponse.json({ error: 'Content item not found.' }, { status: 404 });
   await prisma.schoolContent.delete({ where: { id: item.id } });
+  revalidatePublicPages();
   await removeSchoolImage(item.imagePath).catch(() => undefined);
   return NextResponse.json({ message: 'Website content deleted.' });
 }

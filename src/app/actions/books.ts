@@ -4,6 +4,7 @@ import * as z from 'zod';
 import { requireRole } from '@/lib/auth';
 import { removeStoredBook } from '@/lib/book-storage';
 import { prisma } from '@/lib/prisma';
+import { revalidatePublicPages } from '@/lib/revalidate-public';
 
 export type BookActionState = { error?: string; success?: string };
 const IdSchema = z.string().trim().min(1).max(100);
@@ -23,6 +24,7 @@ export async function createGrade(_state: BookActionState, formData: FormData): 
     }
     throw error;
   }
+  revalidatePublicPages(); // /academics lists grades
   return { success: 'Grade added. You can now add subjects for it.' };
 }
 
@@ -42,6 +44,7 @@ export async function createSubject(_state: BookActionState, formData: FormData)
     }
     throw error;
   }
+  revalidatePublicPages();
   return { success: 'Subject added to the selected grade.' };
 }
 
@@ -59,6 +62,7 @@ export async function deleteBook(_state: BookActionState, formData: FormData): P
 
   await prisma.book.delete({ where: { id: book.id } });
   await removeStoredBook(book.filePath).catch(() => undefined);
+  revalidatePublicPages();
   return { success: 'Book deleted.' };
 }
 

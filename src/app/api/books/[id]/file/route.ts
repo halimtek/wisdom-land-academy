@@ -1,9 +1,8 @@
-import { createReadStream } from 'node:fs';
 import { stat } from 'node:fs/promises';
-import { Readable } from 'node:stream';
 import { NextResponse } from 'next/server';
 import { canReadPublishedBook, etagMatches, ifRangeAllowsRange, makePdfEtag, parsePdfRange } from '@/lib/book-security.mjs';
 import { resolveBookPath } from '@/lib/book-storage';
+import { createFileStream } from '@/lib/file-stream';
 import { prisma } from '@/lib/prisma';
 
 /**
@@ -32,11 +31,14 @@ async function serve(request: Request, context: { params: Promise<{ id: string }
       Vary: 'Range',
     };
 
-    if (etagMatches(request.headers.get('if-none-match'), etag)) {
+    const rangeHeader = ifRangeAllowsRange(request.headers.get('if-range'), etag, lastModified) ? request.headers.get('range') : null;
+
+    // The reader fetches books in byte ranges (HTTP 206). Partial responses are never
+    // cached and never answered with 304: Safari/WebKit has had bugs combining cached
+    // ranges, which can corrupt or stall PDF loading on iPad/iPhone.
+    if (!rangeHeader && etagMatches(request.headers.get('if-none-match'), etag)) {
       return new Response(null, { status: 304, headers: baseHeaders });
     }
-
-    const rangeHeader = ifRangeAllowsRange(request.headers.get('if-range'), etag, lastModified) ? request.headers.get('range') : null;
     const range = parsePdfRange(rangeHeader, fileInfo.size);
     if (range.kind === 'invalid') {
       return new Response(null, { status: 416, headers: { 'Content-Range': `bytes */${fileInfo.size}`, 'Cache-Control': 'no-store' } });
@@ -53,11 +55,16 @@ async function serve(request: Request, context: { params: Promise<{ id: string }
       'Content-Security-Policy': "default-src 'none'; frame-ancestors 'self'",
       'Content-Length': String(length),
     });
-    if (partial) headers.set('Content-Range', `bytes ${start}-${end}/${fileInfo.size}`);
+    if (partial) {
+      headers.set('Content-Range', `bytes ${start}-${end}/${fileInfo.size}`);
+      headers.set('Cache-Control', 'no-store');
+    }
     if (headOnly || length === 0) return new Response(null, { status: partial ? 206 : 200, headers });
 
-    const stream = Readable.toWeb(createReadStream(absolutePath, { start, end }));
-    return new Response(stream as ReadableStream<Uint8Array>, { status: partial ? 206 : 200, headers });
+    // PDF.js aborts its first full-length request once it sees range support, so
+    // cancellation here is routine; createFileStream handles it without leaking.
+    const stream = createFileStream(absolutePath, { start, end, label: `book ${id}` });
+    return new Response(stream, { status: partial ? 206 : 200, headers });
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
       return NextResponse.json({ error: 'Book file is unavailable.' }, { status: 404 });

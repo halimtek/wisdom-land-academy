@@ -3,7 +3,6 @@ import { prisma } from '@/lib/prisma';
 import SchoolContentManager from './school-content-manager';
 
 // Website content and authorization are intentionally loaded per request.
-export const instant = false;
 
 export default async function AdminWebsiteContentPage() {
   await requireRole('ADMIN');

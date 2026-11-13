@@ -4,6 +4,7 @@ import { getCurrentUser } from '@/lib/auth';
 import { roleIsAllowed } from '@/lib/auth-policy.mjs';
 import { removeSchoolImage, storeSchoolImage } from '@/lib/school-media';
 import { prisma } from '@/lib/prisma';
+import { revalidatePublicPages } from '@/lib/revalidate-public';
 
 const MAX_FORM_BYTES = 11 * 1024 * 1024;
 const SettingsSchema = z.object({
@@ -132,6 +133,7 @@ export async function PUT(request: Request) {
     });
     if (existing?.logoImagePath && (newLogoPath || removeLogo)) await removeSchoolImage(existing.logoImagePath).catch(() => undefined);
     if (existing?.heroImagePath && (newHeroPath || removeHero)) await removeSchoolImage(existing.heroImagePath).catch(() => undefined);
+    revalidatePublicPages();
     return NextResponse.json({ message: 'School website settings saved.' });
   } catch {
     if (newLogoPath) await removeSchoolImage(newLogoPath).catch(() => undefined);

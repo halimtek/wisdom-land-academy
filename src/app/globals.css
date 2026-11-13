@@ -219,16 +219,6 @@ button, input { font: inherit; }
 .student-admin-name small { color: #7c8981; font-size: 10px; }
 .student-grade-chip { padding: 7px 10px; border-radius: 20px; background: #f1f5f1; color: #567363; font-size: 10px; white-space: nowrap; }
 @media (max-width: 650px) { .management-header { min-height: 68px; padding: 0 17px; } .management-header-links { gap: 10px; } .management-header-links > .manage-link { font-size: 10px; } .management-account { gap: 8px; } .management-account > span { display: none; } .management-content { padding-top: 22px; } .management-title { align-items: flex-start; } .book-form-grid, .student-create-form { grid-template-columns: 1fr; } .form-field-wide { grid-column: auto; } .book-form-footer { align-items: flex-start; flex-direction: column; } .book-form-footer .primary-action { align-self: flex-end; } .book-card-summary { gap: 8px; padding: 11px; } .book-card-icon { flex-basis: 36px; height: 36px; } .book-access-count { font-size: 9px; } .book-edit-form { padding: 12px; } .grant-form { align-items: stretch; flex-direction: column; } .grant-form .secondary-action { width: fit-content; } .catalog-setup-forms { grid-template-columns: 1fr; } .student-create-footer { grid-column: auto; align-items: flex-start; flex-direction: column; } .student-create-footer .primary-action { align-self: flex-end; } .student-admin-row { padding: 10px; } .student-grade-chip { font-size: 9px; } }
-@media (max-width: 1180px) {
-  .library-layout {
-    width: min(1180px, calc(100% - 40px));
-  }
-
-  .library-book-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
 @media (max-width: 900px) { .admin-app-shell { grid-template-columns: 218px minmax(0, 1fr); } .admin-sidebar { padding-inline: 12px; } .dashboard-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (max-width: 700px) { .admin-app-shell { display: flex; flex-direction: column; } .admin-sidebar { position: static; height: auto; padding: 14px 17px 12px; } .admin-brand { padding: 0 2px; } .admin-nav-label, .admin-sidebar-footer { display: none; } .admin-navigation { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; margin-top: 14px; } .admin-nav-link { min-height: 40px; gap: 8px; padding-inline: 9px; font-size: 10px; } .admin-nav-link svg { width: 16px; height: 16px; } .admin-logout-form { margin: 0; padding: 0; border: 0; } .admin-topbar { min-height: 53px; padding-inline: 19px; } .admin-page-content { padding-top: 26px; } .dashboard-shortcut-grid { grid-template-columns: 1fr; } }
 @media (max-width: 540px) { .library-header { align-items: flex-start; flex-direction: column; gap: 16px; padding: 18px 0; } .library-header-actions { width: 100%; justify-content: space-between; gap: 7px; flex-wrap: wrap; } .library-header-actions .manage-link { font-size: 10px; } .admin-page-heading { align-items: flex-start; flex-direction: column; gap: 12px; } .dashboard-stats { gap: 8px; } .dashboard-stat { min-height: 82px; gap: 9px; padding: 11px; } .dashboard-stat-icon { flex-basis: 34px; width: 34px; height: 34px; } .dashboard-stat strong { font-size: 21px; } }
@@ -549,8 +539,7 @@ button, input { font: inherit; }
 .school-managed-type { min-width:115px; color:#987b43; font-size:9px; font-weight:700; }
 .school-managed-body { padding:0 18px 18px; border-top:1px solid #eef1ec; }
 .settings-card { margin-top:24px; }
-@media(max-width:1120px) { .school-header-inner { width:calc(100% - 36px); } .school-main-navigation { gap:10px; } .school-nav-link { font-size:9px; } .school-admin-login { padding:0 9px; font-size:9px; } }
-@media(max-width:1100px) { .school-header-inner { min-height:72px; } .school-menu-toggle { display:grid; place-items:center; width:44px; height:44px; border:1px solid #d8e1d7; border-radius:4px; background:#fff; color:#285840; cursor:pointer; touch-action: manipulation; } .school-main-navigation { position:absolute; top:71px; right:0; left:0; display:none; align-items:stretch; flex-direction:column; gap:0; padding:10px 22px 18px; border-bottom:1px solid #e2e9e1; background:#fbfcf8; box-shadow:0 15px 25px #203b2c15; } .school-main-navigation.school-navigation-open { display:flex; } .school-nav-link { padding:12px 4px; border-bottom:1px solid #eef1ec; font-size:12px; } .school-nav-link.active { box-shadow:none; font-weight:700; } .school-admin-login { justify-content:center; margin-top:12px; min-height:42px; font-size:11px; } .school-home-hero-inner { min-height:0; padding:50px 0 56px; gap:28px; } .school-home-copy h1 { font-size:49px; } .school-content-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:1100px) { .school-home-hero-inner { min-height:0; padding:50px 0 56px; gap:28px; } .school-home-copy h1 { font-size:49px; } .school-content-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
 @media(max-width:800px) { .school-header-inner,.school-home-hero-inner,.school-section-wrap,.school-home-library,.school-intro-strip { width:calc(100% - 36px); } .school-home-hero-inner { grid-template-columns:1fr; padding:42px 0; } .school-home-copy h1 { font-size:clamp(42px,11vw,56px); } .school-home-copy>p { font-size:13px; } .school-hero-photo,.school-hero-photo-placeholder { height:260px; } .school-intro-strip { align-items:flex-start; flex-direction:column; justify-content:center; padding:19px 0; } .school-home-section,.school-content-archive,.academics-section { padding:52px 0; } .school-section-heading { align-items:flex-start; flex-direction:column; gap:13px; } .school-content-grid { grid-template-columns:1fr; } .school-content-image,.school-content-image-placeholder { height:210px; } .school-academics-band { align-items:flex-start; flex-direction:column; padding:38px 20px; } .school-library-banner { align-items:flex-start; flex-direction:column; padding:22px; } .school-home-book-row { grid-template-columns:repeat(2,minmax(0,1fr)); } .school-contact-grid { grid-template-columns:1fr; } .school-footer-inner { grid-template-columns:1fr 1fr; gap:22px; } .school-footer-inner>div:first-child { grid-column:1/-1; } .school-story-section { grid-template-columns:1fr; gap:25px; width:calc(100% - 36px); margin:48px auto; } .school-story-mark { min-height:160px; } .school-story-mark small { margin-top:-30px; } .school-page-banner { padding:51px 20px 42px; } .grade-level-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } .school-content-form { grid-template-columns:1fr; } .form-field-wide,.consent-check,.school-content-form .book-form-footer { grid-column:auto; } .school-managed-item summary { flex-wrap:wrap; } .school-managed-type { min-width:0; } .school-managed-item summary strong { flex-basis:100%; order:2; } .school-managed-item summary .book-publication-pill { order:3; } .school-content-editor,.site-settings-card { padding:17px; } }
 
 /* Official WLA navy, blue, ivory, and gold identity */
@@ -760,8 +749,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 .school-main-navigation { gap: clamp(8px,1vw,15px); }
 .school-nav-link { font-size: 10px; }
 .school-admin-login { min-height: 36px; padding-inline: 11px; }
-@media(max-width:1120px) { .school-main-navigation { gap: 8px; } .school-nav-link { font-size: 9px; } }
-@media(max-width:930px) { .school-header-inner { min-height: 70px; } .school-brand img { width: 48px; height: 48px; } .school-main-navigation { top: 69px; } .public-sidebar { top: 70px; } }
+@media(max-width:930px) { .public-sidebar { top: 70px; } }
 @media(max-width:760px) { .public-mobile-header { min-height: 50px; position: relative; top: auto; } .public-sidebar { top: 70px; } .public-nav-backdrop { inset: 70px 0 0; } }
 @media(max-width:650px) { .school-footer-brand img { width: 49px; height: 49px; } .public-sidebar { width: min(310px,88vw); } }
 .school-section-heading .school-eyebrow,.school-contact-band .school-eyebrow { color:#86652d; }
@@ -887,60 +875,6 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
   .school-gallery-track { scroll-behavior:auto; }
 }
 
-/* Navigation redesign: robust, accessible mobile controls */
-.school-nav-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 20;
-  border: 0;
-  background: rgba(0, 16, 48, 0.42);
-  cursor: pointer;
-  touch-action: manipulation;
-}
-
-@media (max-width: 1100px) {
-  .school-header .school-menu-toggle {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 48px;
-    height: 48px;
-    border: 1px solid var(--wla-gold);
-    border-radius: 12px;
-    background: var(--wla-navy);
-    color: var(--wla-gold-light);
-    cursor: pointer;
-    touch-action: manipulation;
-    transition: background .18s ease, border-color .18s ease, box-shadow .18s ease, transform .18s ease;
-  }
-  .school-header .school-menu-toggle:hover {
-    background: var(--wla-blue);
-    border-color: var(--wla-gold-light);
-  }
-  .school-header .school-menu-toggle:focus-visible {
-    outline: 3px solid var(--wla-gold);
-    outline-offset: 3px;
-  }
-  .school-header .school-menu-toggle:active {
-    transform: translateY(1px);
-  }
-  .school-header .school-menu-toggle[aria-expanded="true"] {
-    background: var(--wla-blue);
-    border-color: var(--wla-gold-light);
-    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .14);
-  }
-  .school-header .school-menu-toggle svg {
-    pointer-events: none;
-    flex-shrink: 0;
-  }
-  .school-main-navigation {
-    z-index: 31;
-  }
-  .school-main-navigation.school-navigation-open {
-    display: flex;
-  }
-}
-
 .public-library-browse-toggle {
   gap: 10px;
   min-height: 48px;
@@ -958,654 +892,143 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 }
 
 /* =========================================
-   WLA HOME NAVIGATION - MOBILE
+   WLA SCHOOL HEADER & NAVIGATION
+   Single source of truth for the public header (component:
+   src/components/school-navigation.tsx). Earlier stacked mobile
+   rules were removed; do not add competing .school-nav-* rules
+   elsewhere in this file.
+   - >= 1101px : horizontal desktop navigation
+   - <= 1100px : hamburger + full-width dropdown panel
+     (iPad portrait/landscape, Android tablets, phones)
 ========================================= */
 
-.school-menu-toggle {
-  display: none;
+.school-site { overflow-x: clip; }
+
+.school-header {
+  --school-header-h: 78px;
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
 }
 
+.school-menu-toggle,
 .school-nav-backdrop {
   display: none;
 }
 
-@media (max-width: 900px) {
-  .school-header {
-    position: relative;
-    z-index: 100;
-  }
+@media (min-width: 1101px) and (max-width: 1240px) {
+  .school-header-inner { width: calc(100% - 36px); gap: 18px; }
+  .school-main-navigation { gap: 8px; }
+  .school-admin-login { padding-inline: 9px; }
+}
 
-  .school-header-inner {
-    position: relative;
-    z-index: 102;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-  }
+@media (max-width: 1100px) {
+  .school-header { --school-header-h: 72px; }
+  .school-header-inner { min-height: 72px; gap: 12px; }
 
-  .school-brand {
-    min-width: 0;
-  }
-
-  .school-brand img {
-    width: 46px;
-    height: 46px;
-    object-fit: contain;
-  }
-
-  .school-brand-name {
-    font-size: 14px;
-    line-height: 1.2;
-  }
-
-  .school-brand-name small {
-    display: block;
-    font-size: 10px;
-  }
-
-  .school-menu-toggle {
-    display: flex;
+  .school-header .school-menu-toggle {
+    display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 44px;
-    height: 44px;
-    flex: 0 0 44px;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 10px;
-    background: transparent;
-    color: inherit;
+    width: 48px;
+    height: 48px;
+    flex: 0 0 48px;
+    border: 1px solid var(--wla-gold);
+    border-radius: 12px;
+    background: var(--wla-navy);
+    color: var(--wla-gold-light);
     cursor: pointer;
-    position: relative;
-    z-index: 104;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    transition: background .18s ease, border-color .18s ease, box-shadow .18s ease, transform .18s ease;
   }
+  .school-header .school-menu-toggle:hover { background: var(--wla-blue); border-color: var(--wla-gold-light); }
+  .school-header .school-menu-toggle:focus-visible { outline: 3px solid var(--wla-gold); outline-offset: 3px; }
+  .school-header .school-menu-toggle:active { transform: translateY(1px); }
+  .school-header .school-menu-toggle[aria-expanded="true"] { background: var(--wla-blue); border-color: var(--wla-gold-light); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .14); }
+  .school-header .school-menu-toggle svg { pointer-events: none; flex-shrink: 0; }
 
+  /* Positioned against the sticky header, so the panel spans the full width. */
   .school-main-navigation {
-    display: none;
     position: absolute;
     top: 100%;
     left: 0;
     right: 0;
-    z-index: 103;
+    display: none;
     flex-direction: column;
     align-items: stretch;
     gap: 4px;
-    max-height: calc(100dvh - 80px);
+    max-height: calc(100vh - var(--school-header-h) - env(safe-area-inset-top, 0px));
+    max-height: calc(100dvh - var(--school-header-h) - env(safe-area-inset-top, 0px));
     overflow-y: auto;
-    padding: 14px 18px 20px;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    padding: 12px max(18px, env(safe-area-inset-right, 0px)) calc(20px + env(safe-area-inset-bottom, 0px)) max(18px, env(safe-area-inset-left, 0px));
+    border-top: 1px solid var(--wla-line);
     background: #fff;
-    color: #17243a;
-    border-top: 1px solid #eee;
-    box-shadow: 0 14px 30px rgba(0, 0, 0, 0.14);
+    color: var(--wla-navy);
+    box-shadow: 0 18px 30px rgba(0, 16, 48, .16);
   }
-
-  .school-main-navigation.school-navigation-open {
-    display: flex;
-  }
+  .school-main-navigation.school-navigation-open { display: flex; }
 
   .school-main-navigation .school-nav-link {
     display: flex;
     align-items: center;
-    min-height: 46px;
     width: 100%;
-    padding: 10px 14px;
+    min-height: 48px;
+    padding: 12px 14px;
+    border: 0;
     border-radius: 8px;
-    color: #17243a;
+    color: var(--wla-navy);
+    font-size: 15px;
+    line-height: 1.3;
+    white-space: normal;
     text-decoration: none;
+    touch-action: manipulation;
   }
-
-  .school-main-navigation .school-nav-link.active {
-    background: #f1f3f8;
-    color: #b18a3b;
-    font-weight: 700;
-  }
+  .school-main-navigation .school-nav-link:hover { background: #f1f3f8; }
+  .school-main-navigation .school-nav-link.active { background: #f1f3f8; color: #86652d; font-weight: 700; box-shadow: inset 3px 0 var(--wla-gold); }
 
   .school-main-navigation .school-admin-login {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    min-height: 46px;
+    justify-content: center;
+    min-height: 48px;
     margin-top: 8px;
     padding: 10px 14px;
     border-radius: 8px;
+    font-size: 14px;
   }
 
   .school-nav-backdrop {
     display: block;
     position: fixed;
     inset: 0;
-    z-index: 101;
-    width: 100%;
-    height: 100%;
-    border: 0;
-    background: rgba(10, 18, 32, 0.45);
+    z-index: 39;
+    background: rgba(0, 16, 48, .42);
+    cursor: pointer;
+    touch-action: none;
+    -webkit-tap-highlight-color: transparent;
   }
 }
 
-/* =========================================
-   WLA LIBRARY - BASE DESKTOP DESIGN
-========================================= */
-
-.library-layout {
-  display: grid;
-  grid-template-columns: 260px minmax(0, 1fr);
-  gap: 28px;
-  width: min(1320px, calc(100% - 48px));
-  margin: 24px auto;
-  align-items: start;
-}
-
-.library-sidebar {
-  position: sticky;
-  top: 78px;
-  align-self: start;
-  max-height: calc(100vh - 96px);
-  overflow-y: auto;
-  padding: 24px 18px;
-  border: 1px solid #e5e7eb;
-  border-radius: 14px;
-  background: #ffffff;
-  box-shadow: 0 12px 30px rgba(0, 16, 48, 0.06);
-}
-
-.library-sidebar-brand h2 {
-  margin: 0 0 18px;
-  color: #001030;
-  font-size: 15px;
-  font-weight: 800;
-  letter-spacing: 0.18em;
-}
-
-.library-sidebar-nav {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.library-sidebar-link {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  width: 100%;
-  padding: 11px 14px;
-  border: 0;
-  border-radius: 10px;
-  background: transparent;
-  color: #17243a;
-  font-size: 14px;
-  font-weight: 600;
-  text-align: left;
-  cursor: pointer;
-  text-decoration: none;
-  transition: background 0.18s ease, color 0.18s ease;
-}
-
-.library-sidebar-link:hover {
-  background: #f3f5fa;
-}
-
-.library-sidebar-link.active {
-  background: #001030;
-  color: #ffffff;
-}
-
-.library-sidebar-link span:last-child {
-  color: #8a94a6;
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.library-sidebar-link.active span:last-child {
-  color: #e4c77f;
-}
-
-.library-main {
-  min-width: 0;
-  padding: 8px 0 24px;
-}
-
-.library-mobile-toggle,
-.library-mobile-close,
-.library-mobile-backdrop {
-  display: none;
-}
-
-.library-heading {
-  display: flex;
-  align-items: end;
-  justify-content: space-between;
-  gap: 24px;
-  margin-bottom: 22px;
-}
-
-.library-heading h1 {
-  margin: 6px 0 8px;
-  color: #001030;
-  font-size: clamp(30px, 4vw, 42px);
-  font-weight: 700;
-  line-height: 1.05;
-}
-
-.library-heading p {
-  margin: 0;
-  color: #58667a;
-  font-size: 15px;
-  line-height: 1.6;
-}
-
-.eyebrow {
-  display: inline-block;
-  color: #a17e3b;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.22em;
-}
-
-.library-search {
-  min-width: 260px;
-  max-width: 360px;
-}
-
-.library-search input {
-  width: 100%;
-  min-height: 46px;
-  padding: 0 16px;
-  border: 1px solid #dce1e9;
-  border-radius: 12px;
-  background: #ffffff;
-  color: #17243a;
-  font-size: 14px;
-  outline: none;
-  transition: border-color 0.18s ease, box-shadow 0.18s ease;
-}
-
-.library-search input:focus {
-  border-color: #001030;
-  box-shadow: 0 0 0 4px rgba(0, 16, 48, 0.08);
-}
-
-.library-filter-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto;
-  gap: 16px;
-  align-items: end;
-  margin-bottom: 26px;
-  padding: 18px;
-  border: 1px solid #e5e7eb;
-  border-radius: 14px;
-  background: #ffffff;
-}
-
-.library-filter-row label {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  color: #334155;
-  font-size: 13px;
-  font-weight: 700;
-}
-
-.library-filter-row select {
-  min-height: 44px;
-  padding: 0 14px;
-  border: 1px solid #dce1e9;
-  border-radius: 10px;
-  background: #ffffff;
-  color: #17243a;
-  font-size: 14px;
-}
-
-.library-filter-row > p {
-  margin: 0;
-  color: #58667a;
-  font-size: 14px;
-  font-weight: 600;
-  white-space: nowrap;
-}
-
-.library-section {
-  margin-bottom: 30px;
-}
-
-.library-section-heading {
-  display: flex;
-  align-items: end;
-  justify-content: space-between;
-  gap: 16px;
-  margin-bottom: 16px;
-}
-
-.library-section-heading h2 {
-  margin: 0 0 4px;
-  color: #001030;
-  font-size: 24px;
-  font-weight: 700;
-}
-
-.library-section-heading p {
-  margin: 0;
-  color: #58667a;
-  font-size: 14px;
-}
-
-.library-section-heading span {
-  color: #001030;
-  font-size: 13px;
-  font-weight: 800;
-  white-space: nowrap;
-}
-
-.library-book-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 18px;
-}
-
-.library-book-card {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  overflow: hidden;
-  border: 1px solid #e5e7eb;
-  border-radius: 14px;
-  background: #ffffff;
-  text-decoration: none;
-  color: inherit;
-  box-shadow: 0 8px 22px rgba(0, 16, 48, 0.05);
-  transition: transform 0.18s ease, box-shadow 0.18s ease;
-}
-
-.library-book-card:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 14px 30px rgba(0, 16, 48, 0.1);
-}
-
-.library-book-cover {
-  position: relative;
-  width: 100%;
-  aspect-ratio: 3 / 4;
-  overflow: hidden;
-  background: linear-gradient(135deg, #eef2f8, #f8f5ea);
-}
-
-.library-book-placeholder {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  width: 100%;
-  height: 100%;
-  padding: 18px;
-  text-align: center;
-  color: #001030;
-}
-
-.library-book-placeholder span {
-  color: #a17e3b;
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.2em;
-}
-
-.library-book-placeholder strong {
-  font-size: 15px;
-  line-height: 1.3;
-}
-
-.library-book-info {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  padding: 14px;
-}
-
-.library-book-info p {
-  margin: 0;
-  color: #a17e3b;
-  font-size: 10px;
-  font-weight: 800;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-}
-
-.library-book-info h2 {
-  margin: 0;
-  color: #001030;
-  font-size: 16px;
-  font-weight: 700;
-  line-height: 1.3;
-}
-
-.library-book-info span {
-  color: #58667a;
-  font-size: 13px;
-}
-
-.library-book-info small {
-  margin-top: 4px;
-  color: #001030;
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.library-empty-state {
-  padding: 40px 24px;
-  border: 1px dashed #cbd5e1;
-  border-radius: 16px;
-  background: #ffffff;
-  text-align: center;
-}
-
-.library-empty-state h2 {
-  margin: 0 0 8px;
-  color: #001030;
-}
-
-.library-empty-state p {
-  margin: 0 0 16px;
-  color: #58667a;
-}
-
-.library-empty-state button {
-  min-height: 42px;
-  padding: 0 18px;
-  border: 0;
-  border-radius: 10px;
-  background: #001030;
-  color: #ffffff;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.library-loading {
-  display: grid;
-  place-items: center;
-  min-height: 60vh;
-  gap: 16px;
-  color: #58667a;
-}
-
-.library-loading-mark {
-  width: 42px;
-  height: 42px;
-  border: 4px solid #e5e7eb;
-  border-top-color: #001030;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
+/* Tablets: lay the links out in columns instead of one very tall list. */
+@media (min-width: 701px) and (max-width: 1100px) {
+  .school-main-navigation.school-navigation-open {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    padding-top: 16px;
   }
-}
-
-/* =========================================
-   WLA LIBRARY - MOBILE NAVIGATION
-========================================= */
-
-.library-mobile-toggle,
-.library-mobile-close,
-.library-mobile-backdrop {
-  display: none;
-}
-
-/* =========================================
-   WLA LIBRARY - MOBILE NAVIGATION
-========================================= */
-
-.library-mobile-toggle,
-.library-mobile-close,
-.library-mobile-backdrop {
-  display: none;
+  .school-main-navigation .school-admin-login { grid-column: 1 / -1; justify-self: start; min-width: 220px; }
 }
 
 @media (max-width: 900px) {
-  .library-layout {
-    position: relative;
-    display: block;
-    width: 100%;
-    min-width: 0;
-  }
-
-  .library-main {
-    width: 100%;
-    min-width: 0;
-    padding: 18px;
-  }
-
-  .library-mobile-toggle {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 9px;
-    min-height: 44px;
-    margin-bottom: 18px;
-    padding: 10px 15px;
-    border: 1px solid #dce1e9;
-    border-radius: 9px;
-    background: #fff;
-    color: #17243a;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-  }
-
-  .library-sidebar {
-    position: fixed;
-    top: 0;
-    bottom: 0;
-    left: 0;
-    z-index: 202;
-    width: min(300px, 85vw);
-    height: 100dvh;
-    overflow-y: auto;
-    padding: 24px 18px;
-    background: #fff;
-    box-shadow: 8px 0 28px rgba(0, 0, 0, 0.15);
-    transform: translateX(-105%);
-    visibility: hidden;
-    transition:
-      transform 0.25s ease,
-      visibility 0.25s ease;
-  }
-
-  .library-sidebar.library-sidebar-mobile-open {
-    transform: translateX(0);
-    visibility: visible;
-  }
-
-  .library-mobile-close {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 40px;
-    height: 40px;
-    margin: 0 0 16px auto;
-    border: 1px solid #e2e5eb;
-    border-radius: 8px;
-    background: #fff;
-    color: #17243a;
-    cursor: pointer;
-  }
-
-  .library-mobile-backdrop {
-    display: block;
-    position: fixed;
-    inset: 0;
-    z-index: 201;
-    width: 100%;
-    height: 100%;
-    border: 0;
-    background: rgba(10, 18, 32, 0.48);
-  }
-
-  .library-heading {
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
-    gap: 18px;
-  }
-
-  .library-search {
-    width: 100%;
-  }
-
-  .library-search input {
-    width: 100%;
-    min-width: 0;
-  }
-
-  .library-filter-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 12px;
-  }
-
-  .library-filter-row label {
-    min-width: 0;
-  }
-
-  .library-filter-row select {
-    width: 100%;
-    min-width: 0;
-  }
-
-  .library-filter-row > p {
-    grid-column: 1 / -1;
-  }
-
-  .library-book-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 14px;
-  }
-
-  .library-book-card {
-    min-width: 0;
-  }
-
-  .library-book-cover {
-    width: 100%;
-  }
-
-  .library-book-info h2 {
-    overflow-wrap: anywhere;
-    font-size: 14px;
-  }
+  .school-brand img { width: 46px; height: 46px; }
+  .school-brand-name { font-size: 14px; line-height: 1.2; }
+  .school-brand-name small { font-size: 10px; }
 }
 
 @media (max-width: 380px) {
-  .library-main {
-    padding: 12px;
-  }
-
-  .library-book-grid {
-    gap: 10px;
-  }
-
-  .school-brand-name {
-    font-size: 12px;
-  }
+  .school-brand-name { font-size: 12px; }
 }

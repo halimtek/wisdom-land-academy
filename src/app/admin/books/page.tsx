@@ -2,8 +2,6 @@ import { requireRole } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import BookManager from './book-manager';
 
-export const instant = false;
-
 export default async function AdminBooksPage() {
   await requireRole('ADMIN');
   const [grades, books] = await Promise.all([

@@ -2,6 +2,11 @@
 generator client {
   provider = "prisma-client"
   output   = "../src/generated/prisma"
+  // "native" = the machine running `prisma generate` (debian-openssl-3.0.x on the
+  // school server). Vercel Functions run on Amazon Linux 2023, which needs
+  // rhel-openssl-3.0.x. The client is generated during every build
+  // (`npm run build`), so these binaries are never committed to git.
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
 }
 
 datasource db {

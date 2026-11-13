@@ -2,8 +2,6 @@ import { requireRole } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import StudentManager from './student-manager';
 
-export const instant = false;
-
 export default async function AdminStudentsPage() {
   await requireRole('ADMIN');
   const [grades, students] = await Promise.all([

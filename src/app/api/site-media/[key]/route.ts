@@ -1,16 +1,19 @@
-import { createReadStream } from 'node:fs';
 import { stat } from 'node:fs/promises';
-import { Readable } from 'node:stream';
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { roleIsAllowed } from '@/lib/auth-policy.mjs';
+import { createFileStream } from '@/lib/file-stream';
 import { prisma } from '@/lib/prisma';
 import { resolveSchoolImage } from '@/lib/school-media';
 
-export async function GET(_request: Request, context: { params: Promise<{ key: string }> }) {
-  const { key } = await context.params;
+type MediaFile = { absolutePath: string; size: number; headers: Record<string, string> };
+
+const notFound = (message = 'Image not found.') => NextResponse.json({ error: message }, { status: 404 });
+
+/** Looks up the image for `key`, applies access rules, and checks the stored file. */
+async function findMedia(key: string): Promise<MediaFile | Response> {
   let imagePath: string | null = null;
-    let publicCover = false;
+  let publicCover = false;
   if (key === 'logo' || key === 'hero') {
     const settings = await prisma.schoolSettings.findUnique({ where: { id: 'main' }, select: { logoImagePath: true, heroImagePath: true } });
     imagePath = key === 'logo' ? settings?.logoImagePath ?? null : settings?.heroImagePath ?? null;
@@ -21,24 +24,26 @@ export async function GET(_request: Request, context: { params: Promise<{ key: s
   } else if (key.startsWith('book-cover-')) {
     const id = key.slice('book-cover-'.length);
     const book = await prisma.book.findUnique({ where: { id }, select: { coverImagePath: true, isPublished: true } });
-    if (!book) return NextResponse.json({ error: 'Image not found.' }, { status: 404 });
+    if (!book) return notFound();
     if (!book.isPublished) {
       const user = await getCurrentUser();
-      if (!user || !roleIsAllowed(user.role, ['ADMIN'])) return NextResponse.json({ error: 'Image not found.' }, { status: 404 });
+      if (!user || !roleIsAllowed(user.role, ['ADMIN'])) return notFound();
     }
     imagePath = book.coverImagePath;
-        publicCover = book.isPublished;
+    publicCover = book.isPublished;
   } else {
-    return NextResponse.json({ error: 'Image not found.' }, { status: 404 });
+    return notFound();
   }
-  if (!imagePath) return NextResponse.json({ error: 'Image not found.' }, { status: 404 });
+  if (!imagePath) return notFound();
 
   try {
     const absolutePath = await resolveSchoolImage(imagePath);
     const info = await stat(absolutePath);
-    if (!info.isFile()) return NextResponse.json({ error: 'Image not found.' }, { status: 404 });
+    if (!info.isFile()) return notFound();
     const contentType = imagePath.endsWith('.png') ? 'image/png' : imagePath.endsWith('.webp') ? 'image/webp' : 'image/jpeg';
-    return new Response(Readable.toWeb(createReadStream(absolutePath)) as ReadableStream<Uint8Array>, {
+    return {
+      absolutePath,
+      size: info.size,
       headers: {
         'Content-Type': contentType,
         'Content-Length': String(info.size),
@@ -46,8 +51,31 @@ export async function GET(_request: Request, context: { params: Promise<{ key: s
         'X-Content-Type-Options': 'nosniff',
         'Content-Security-Policy': "default-src 'none'; sandbox",
       },
-    });
-  } catch {
-    return NextResponse.json({ error: 'Image is unavailable.' }, { status: 404 });
+    };
+  } catch (error) {
+    // The response stays a plain 404, but the cause is recorded for the administrator.
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      console.warn(`[site-media] ${key}: stored image file is missing (${imagePath})`);
+    } else {
+      console.error(`[site-media] ${key}: image could not be read`, error);
+    }
+    return notFound('Image is unavailable.');
   }
+}
+
+export async function GET(_request: Request, context: { params: Promise<{ key: string }> }) {
+  const { key } = await context.params;
+  const media = await findMedia(key);
+  if (media instanceof Response) return media;
+  const body = createFileStream(media.absolutePath, { end: media.size - 1, label: `site-media ${key}` });
+  return new Response(body, { headers: media.headers });
+}
+
+// Explicit HEAD: same headers and status as GET, without opening the file. (Without it,
+// Next.js runs GET and discards the body, which leaked a file descriptor per request.)
+export async function HEAD(_request: Request, context: { params: Promise<{ key: string }> }) {
+  const { key } = await context.params;
+  const media = await findMedia(key);
+  if (media instanceof Response) return new Response(null, { status: media.status, headers: media.headers });
+  return new Response(null, { headers: media.headers });
 }

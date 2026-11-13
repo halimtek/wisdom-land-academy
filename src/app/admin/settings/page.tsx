@@ -4,7 +4,6 @@ import { prisma } from '@/lib/prisma';
 import SiteSettingsForm from './site-settings-form';
 
 // Settings and authorization are intentionally loaded per request.
-export const instant = false;
 
 export default async function AdminSettingsPage() {
   await requireRole('ADMIN');
