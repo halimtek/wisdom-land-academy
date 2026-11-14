@@ -4,9 +4,11 @@ import type { SchoolContentKind } from '@/generated/prisma/enums';
 import { getCurrentUser } from '@/lib/auth';
 import { roleIsAllowed } from '@/lib/auth-policy.mjs';
 import { MAX_SCHOOL_IMAGE_BYTES, validateSchoolContentPublication, validateSchoolImageUpload } from '@/lib/school-content-security.mjs';
-import { removeSchoolImage, storeSchoolImage } from '@/lib/school-media';
+import { removeSchoolImage } from '@/lib/school-media';
 import { prisma } from '@/lib/prisma';
 import { revalidatePublicPages } from '@/lib/revalidate-public';
+import { removeObjectQuietly, StorageTimeoutError } from '@/lib/storage';
+import { acceptUpload, hasUpload, UploadRejectedError } from '@/lib/uploads';
 
 const Kinds = ['ACTIVITY', 'ANNOUNCEMENT', 'STAFF_PROFILE', 'STUDENT_PROJECT'] as const;
 const MAX_FORM_BYTES = MAX_SCHOOL_IMAGE_BYTES + 512 * 1024;
@@ -73,7 +75,7 @@ function checkbox(value: FormDataEntryValue | null) {
 }
 
 function readContentData(form: FormData, contentId?: string) {
-  const allowed = new Set(['kind', 'title', 'summary', 'body', 'displayName', 'roleTitle', 'eventDate', 'imageAlt', 'isPublished', 'consentConfirmed', 'image', 'removeImage', ...(contentId ? ['contentId'] : [])]);
+  const allowed = new Set(['kind', 'title', 'summary', 'body', 'displayName', 'roleTitle', 'eventDate', 'imageAlt', 'isPublished', 'consentConfirmed', 'image', 'imageKey', 'removeImage', ...(contentId ? ['contentId'] : [])]);
   for (const key of form.keys()) if (!allowed.has(key)) return { error: 'The form contains an unexpected field.' } as const;
 
   const names = ['kind', 'title', 'summary', 'body', 'displayName', 'roleTitle', 'eventDate', 'imageAlt', 'isPublished', 'consentConfirmed', 'image', 'removeImage'];
@@ -135,10 +137,11 @@ async function writeContent(request: Request, update: boolean) {
     const signature = new Uint8Array(await result.image.slice(0, 12).arrayBuffer());
     const imageError = validateSchoolImageUpload({ filename: result.image.name, mimeType: result.image.type, size: result.image.size, signature });
     if (imageError) return NextResponse.json({ error: imageError }, { status: 400 });
-    if (!result.content.imageAlt?.trim()) return NextResponse.json({ error: 'Add descriptive alternative text for the uploaded image.' }, { status: 400 });
   }
+  if (hasUpload(form, 'image') && !result.content.imageAlt?.trim()) return NextResponse.json({ error: 'Add descriptive alternative text for the uploaded image.' }, { status: 400 });
 
   let previousImage: string | null = null;
+  let committed = false;
   try {
     if (update) {
       const previous = await prisma.schoolContent.findUnique({ where: { id: result.content.contentId }, select: { id: true, imagePath: true } });
@@ -146,7 +149,8 @@ async function writeContent(request: Request, update: boolean) {
       previousImage = previous.imagePath;
     }
 
-    if (result.image) imagePath = await storeSchoolImage(result.image);
+    // A file (local storage) or the key of a direct upload to Supabase Storage.
+    imagePath = (await acceptUpload('image', form, 'image')) ?? undefined;
 
     const data = {
       kind: result.content.kind as SchoolContentKind,
@@ -164,11 +168,16 @@ async function writeContent(request: Request, update: boolean) {
     const saved = update
       ? await prisma.schoolContent.update({ where: { id: result.content.contentId }, data, select: { id: true } })
       : await prisma.schoolContent.create({ data, select: { id: true } });
-    if (previousImage && (imagePath || result.removeImage)) await removeSchoolImage(previousImage).catch(() => undefined);
+    committed = true;
+    // The previous photo is removed only after the record no longer points to it.
+    if (previousImage && (imagePath || result.removeImage)) await removeObjectQuietly(previousImage, 'content photo replaced');
     revalidatePublicPages();
     return NextResponse.json({ id: saved.id, message: update ? 'Website content updated.' : 'Website content created.' }, { status: update ? 200 : 201 });
-  } catch {
-    if (imagePath) await removeSchoolImage(imagePath).catch(() => undefined);
+  } catch (error) {
+    if (!committed) await removeObjectQuietly(imagePath, 'content save failed');
+    if (error instanceof UploadRejectedError) return NextResponse.json({ error: error.message }, { status: 400 });
+    console.error('[admin/site-content] Content could not be saved', error);
+    if (error instanceof StorageTimeoutError) return NextResponse.json({ error: 'File storage did not respond in time. Nothing was changed; please try again.' }, { status: 504 });
     return NextResponse.json({ error: 'Content could not be saved. Check private storage and try again.' }, { status: 500 });
   }
 }

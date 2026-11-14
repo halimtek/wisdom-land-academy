@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
+import { DirectUploadError, prepareDirectUploads } from '@/lib/direct-upload';
 
 type Settings = { aboutText: string | null; contactPhone: string | null; contactEmail: string | null; contactAddress: string | null; logoImagePath: string | null; logoImageAlt: string | null; heroImagePath: string | null; heroImageAlt: string | null } | null;
 export default function SiteSettingsForm({ settings }: { settings: Settings }) {
@@ -11,11 +12,13 @@ export default function SiteSettingsForm({ settings }: { settings: Settings }) {
   const [error, setError] = useState(false);
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault(); setPending(true); setMessage(''); setError(false);
+    const form = new FormData(event.currentTarget);
     try {
-      const response = await fetch('/api/admin/site-settings', { method: 'PUT', body: new FormData(event.currentTarget) });
+      await prepareDirectUploads(form, [{ name: 'logoImage', kind: 'image' }, { name: 'heroImage', kind: 'image' }]);
+      const response = await fetch('/api/admin/site-settings', { method: 'PUT', body: form });
       const result = await response.json() as { error?: string; message?: string };
       setMessage(response.ok ? result.message ?? 'Settings saved.' : result.error ?? 'Could not save settings.'); setError(!response.ok); if (response.ok) router.refresh();
-    } catch { setMessage('The server could not be reached. Try again.'); setError(true); }
+    } catch (err) { setMessage(err instanceof DirectUploadError ? err.message : 'The server could not be reached. Try again.'); setError(true); }
     finally { setPending(false); }
   }
   return <section className="site-settings-card"><div className="section-heading"><div><span className="welcome-label">PUBLIC WEBSITE</span><h2>School details and branding</h2><p>Enter verified details and use approved school imagery only.</p></div></div>

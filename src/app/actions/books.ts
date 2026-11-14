@@ -2,7 +2,7 @@
 
 import * as z from 'zod';
 import { requireRole } from '@/lib/auth';
-import { removeStoredBook } from '@/lib/book-storage';
+import { removeObjectQuietly } from '@/lib/storage';
 import { prisma } from '@/lib/prisma';
 import { revalidatePublicPages } from '@/lib/revalidate-public';
 
@@ -61,7 +61,7 @@ export async function deleteBook(_state: BookActionState, formData: FormData): P
   if (book._count.progress > 0) return { error: 'This book has student reading progress, so it cannot be deleted.' };
 
   await prisma.book.delete({ where: { id: book.id } });
-  await removeStoredBook(book.filePath).catch(() => undefined);
+  await removeObjectQuietly(book.filePath, 'book deleted');
   revalidatePublicPages();
   return { success: 'Book deleted.' };
 }

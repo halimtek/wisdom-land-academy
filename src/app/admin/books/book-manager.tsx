@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useActionState, useEffect, useState, type FormEvent } from 'react';
 import { createGrade, createSubject, deleteBook } from '@/app/actions/books';
 import type { BookActionState } from '@/app/actions/books';
+import { DirectUploadError, prepareDirectUploads } from '@/lib/direct-upload';
 
 type GradeOption = { id: string; name: string; subjects: { id: string; name: string }[] };
 type ManagedBook = {
@@ -72,7 +73,10 @@ function BookEditor({ grades, book }: { grades: GradeOption[]; book?: ManagedBoo
     setFeedback('');
     setFeedbackError(false);
     try {
-      const response = await fetch('/api/admin/books', { method: 'POST', body: new FormData(form) });
+      const data = new FormData(form);
+      // Supabase storage: PDF and cover go straight to the private bucket first.
+      await prepareDirectUploads(data, [{ name: 'file', kind: 'pdf' }, { name: 'cover', kind: 'image' }]);
+      const response = await fetch('/api/admin/books', { method: 'POST', body: data });
       const result = await response.json() as { error?: string; message?: string };
       if (!response.ok) { setFeedbackError(true); setFeedback(result.error ?? 'The book could not be saved.'); return; }
       setFeedback(result.message ?? 'Saved.');
@@ -85,9 +89,9 @@ function BookEditor({ grades, book }: { grades: GradeOption[]; book?: ManagedBoo
         setAllowedGradeIds([]);
       }
       router.refresh();
-    } catch {
+    } catch (error) {
       setFeedbackError(true);
-      setFeedback('The server could not be reached. Please try again.');
+      setFeedback(error instanceof DirectUploadError ? error.message : 'The server could not be reached. Please try again.');
     } finally {
       setPending(false);
     }
@@ -111,7 +115,7 @@ function BookEditor({ grades, book }: { grades: GradeOption[]; book?: ManagedBoo
         {!accessAllStudents && <label className="form-field form-field-wide">Allowed grades<select name="allowedGradeIds" multiple value={allowedGradeIds} onChange={(event) => setAllowedGradeIds(Array.from(event.target.selectedOptions, (option) => option.value))}>{grades.map((grade) => <option key={grade.id} value={grade.id}>{grade.name}</option>)}</select></label>}
       </>}
       <label className="form-field form-field-wide">Description <span className="field-optional">Optional</span><textarea name="description" rows={2} maxLength={3000} defaultValue={book?.description ?? ''} placeholder="A short description for students" /></label>
-      <label className="form-field form-field-wide file-picker">{book ? 'Replace PDF' : 'PDF textbook'}{book && <span className="field-optional">Optional</span>}<input name="file" type="file" accept="application/pdf,.pdf" required={!book} /><span className="file-note">PDF only · 25 MB maximum. The file is stored privately.</span></label>
+      <label className="form-field form-field-wide file-picker">{book ? 'Replace PDF' : 'PDF textbook'}{book && <span className="field-optional">Optional</span>}<input name="file" type="file" accept="application/pdf,.pdf" required={!book} /><span className="file-note">PDF only · 50 MB maximum. The file is stored privately.</span></label>
       <label className="form-field form-field-wide file-picker">Cover image <span className="field-optional">Optional</span><input name="cover" type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" /><span className="file-note">Optional cover image for the library catalog.</span></label>
     </div>
     <div className="publish-control"><label><input type="checkbox" name="isPublished" defaultChecked={book?.isPublished ?? false} /><span><strong>Publish to school library</strong><small>Anyone on the school network can read a published book. Draft books are unavailable to all readers.</small></span></label><span className={book?.isPublished ? 'publish-state published' : 'publish-state'}>{book?.isPublished ? <><Globe2 size={14} />Published</> : <><LockKeyhole size={14} />Draft</>}</span></div>

@@ -23,7 +23,13 @@ test('PDF upload checks extension, MIME type, size, and file signature', () => {
   assert.equal(validatePdfUpload(valid), null);
   assert.match(validatePdfUpload({ ...valid, filename: 'textbook.exe' }), /PDF file/);
   assert.match(validatePdfUpload({ ...valid, mimeType: 'application/octet-stream' }), /content type/);
-  assert.match(validatePdfUpload({ ...valid, size: MAX_PDF_BYTES + 1 }), /25 MB/);
+  assert.equal(MAX_PDF_BYTES, 50 * 1024 * 1024);
+  assert.equal(validatePdfUpload({ ...valid, size: 50 * 1024 * 1024 }), null, 'exactly 50 MB is accepted');
+  assert.match(validatePdfUpload({ ...valid, size: 50 * 1024 * 1024 + 1 }), /between 8 bytes and 50 MB/, '50 MB + 1 byte is rejected');
+  for (const size of [25 * 1024 * 1024 + 1, 37 * 1024 * 1024, 50 * 1024 * 1024 - 1]) {
+    assert.equal(validatePdfUpload({ ...valid, size }), null, `${size} bytes (between 25 and 50 MB) is accepted`);
+  }
+  assert.match(validatePdfUpload({ ...valid, size: 100 * 1024 * 1024 }), /50 MB/, 'the former 100 MB limit no longer applies');
   assert.match(validatePdfUpload({ ...valid, signature: new TextEncoder().encode('not pdf') }), /signature/);
 });
 

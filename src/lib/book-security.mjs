@@ -1,4 +1,5 @@
-export const MAX_PDF_BYTES = 25 * 1024 * 1024;
+// Matches the per-file upload limit of the current Supabase plan (50 MB).
+export const MAX_PDF_BYTES = 50 * 1024 * 1024;
 
 /** @param {{isPublished?: unknown} | null | undefined} book */
 export function canReadPublishedBook(book) {

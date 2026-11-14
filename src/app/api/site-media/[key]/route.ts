@@ -1,12 +1,11 @@
-import { stat } from 'node:fs/promises';
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { roleIsAllowed } from '@/lib/auth-policy.mjs';
-import { createFileStream } from '@/lib/file-stream';
 import { prisma } from '@/lib/prisma';
-import { resolveSchoolImage } from '@/lib/school-media';
+import { isSafeSchoolImagePath } from '@/lib/school-content-security.mjs';
+import { readObject, statObject } from '@/lib/storage';
 
-type MediaFile = { absolutePath: string; size: number; headers: Record<string, string> };
+type MediaFile = { imagePath: string; size: number; headers: Record<string, string> };
 
 const notFound = (message = 'Image not found.') => NextResponse.json({ error: message }, { status: 404 });
 
@@ -37,12 +36,16 @@ async function findMedia(key: string): Promise<MediaFile | Response> {
   if (!imagePath) return notFound();
 
   try {
-    const absolutePath = await resolveSchoolImage(imagePath);
-    const info = await stat(absolutePath);
-    if (!info.isFile()) return notFound();
+    if (!isSafeSchoolImagePath(imagePath)) throw new Error('Unsafe school image path.');
+    // Local disk or private Supabase bucket (STORAGE_DRIVER); see src/lib/storage.ts.
+    const info = await statObject(imagePath);
+    if (!info) {
+      console.warn(`[site-media] ${key}: stored image file is missing (${imagePath})`);
+      return notFound('Image is unavailable.');
+    }
     const contentType = imagePath.endsWith('.png') ? 'image/png' : imagePath.endsWith('.webp') ? 'image/webp' : 'image/jpeg';
     return {
-      absolutePath,
+      imagePath,
       size: info.size,
       headers: {
         'Content-Type': contentType,
@@ -67,8 +70,13 @@ export async function GET(_request: Request, context: { params: Promise<{ key: s
   const { key } = await context.params;
   const media = await findMedia(key);
   if (media instanceof Response) return media;
-  const body = createFileStream(media.absolutePath, { end: media.size - 1, label: `site-media ${key}` });
-  return new Response(body, { headers: media.headers });
+  try {
+    const body = await readObject(media.imagePath, { start: 0, end: media.size - 1, size: media.size, label: `site-media ${key}` });
+    return new Response(body, { headers: media.headers });
+  } catch (error) {
+    console.error(`[site-media] ${key}: image could not be read`, error);
+    return notFound('Image is unavailable.');
+  }
 }
 
 // Explicit HEAD: same headers and status as GET, without opening the file. (Without it,

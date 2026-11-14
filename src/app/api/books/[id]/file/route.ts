@@ -1,9 +1,7 @@
-import { stat } from 'node:fs/promises';
 import { NextResponse } from 'next/server';
 import { canReadPublishedBook, etagMatches, ifRangeAllowsRange, makePdfEtag, parsePdfRange } from '@/lib/book-security.mjs';
-import { resolveBookPath } from '@/lib/book-storage';
-import { createFileStream } from '@/lib/file-stream';
 import { prisma } from '@/lib/prisma';
+import { readObject, statObject, StorageTimeoutError } from '@/lib/storage';
 
 /**
  * Public delivery of PUBLISHED books only. Unpublished and unknown ids both return 404.
@@ -16,12 +14,12 @@ async function serve(request: Request, context: { params: Promise<{ id: string }
   if (!book || !canReadPublishedBook(book)) return NextResponse.json({ error: 'Book not found.' }, { status: 404 });
 
   try {
-    const { absolutePath } = await resolveBookPath(book.filePath);
-    const fileInfo = await stat(absolutePath);
-    if (!fileInfo.isFile()) return NextResponse.json({ error: 'Book file is unavailable.' }, { status: 404 });
+    // Local disk or private Supabase bucket (STORAGE_DRIVER); see src/lib/storage.ts.
+    const fileInfo = await statObject(book.filePath);
+    if (!fileInfo) return NextResponse.json({ error: 'Book file is unavailable.' }, { status: 404 });
 
     const etag = makePdfEtag(fileInfo);
-    const lastModified = fileInfo.mtime.toUTCString();
+    const lastModified = new Date(fileInfo.mtimeMs).toUTCString();
     const baseHeaders = {
       ETag: etag,
       'Last-Modified': lastModified,
@@ -62,10 +60,14 @@ async function serve(request: Request, context: { params: Promise<{ id: string }
     if (headOnly || length === 0) return new Response(null, { status: partial ? 206 : 200, headers });
 
     // PDF.js aborts its first full-length request once it sees range support, so
-    // cancellation here is routine; createFileStream handles it without leaking.
-    const stream = createFileStream(absolutePath, { start, end, label: `book ${id}` });
+    // cancellation here is routine; both storage drivers release the file/request.
+    const stream = await readObject(book.filePath, { start, end, size: fileInfo.size, label: `book ${id}` });
     return new Response(stream, { status: partial ? 206 : 200, headers });
   } catch (error) {
+    console.error(`[books] Could not serve the file of book ${id}`, error);
+    if (error instanceof StorageTimeoutError) {
+      return NextResponse.json({ error: 'Book storage did not respond in time.' }, { status: 504, headers: { 'Cache-Control': 'no-store' } });
+    }
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
       return NextResponse.json({ error: 'Book file is unavailable.' }, { status: 404 });
     }

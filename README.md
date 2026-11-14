@@ -14,7 +14,7 @@ This one-time command prompts for username, full name, and a password (minimum 1
 
 Set `BOOK_STORAGE_DIR` to an absolute directory outside the repository's `public/` directory. Store book files there and put only relative paths in `Book.filePath`. Files are served through `/api/books/{id}/file` after session and permission checks; never place book files in `public/` or expose the storage directory through a web server.
 
-Administrators manage PDF textbooks at `/admin/books`. Uploads are limited to 25 MB, checked for PDF MIME type and `%PDF-` signature, and saved under server-generated names. Students see books grouped by grade and subject only after an administrator grants an explicit book permission. Deletion is blocked while reading-progress records exist so progress is preserved. This phase uses the existing `Book`, `Subject`, `Grade`, `BookPermission`, and `ReadingProgress` models and needs no schema migration.
+Administrators manage PDF textbooks at `/admin/books`. Uploads are limited to 50 MB, checked for PDF MIME type and `%PDF-` signature, and saved under server-generated names. Students see books grouped by grade and subject only after an administrator grants an explicit book permission. Deletion is blocked while reading-progress records exist so progress is preserved. This phase uses the existing `Book`, `Subject`, `Grade`, `BookPermission`, and `ReadingProgress` models and needs no schema migration.
 
 The storage resolver, PDF validation, and access policy are isolated so a future lesson or media resource can reuse the private storage and permission patterns. Live classes and video lessons are not part of this phase.
 

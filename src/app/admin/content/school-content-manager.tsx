@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useState, type FormEvent } from 'react';
+import { DirectUploadError, prepareDirectUploads } from '@/lib/direct-upload';
 
 type Item = { id: string; kind: 'ACTIVITY' | 'ANNOUNCEMENT' | 'STAFF_PROFILE' | 'STUDENT_PROJECT'; title: string; summary: string | null; body: string | null; displayName: string | null; roleTitle: string | null; eventDate: string | null; imagePath: string | null; imageAlt: string | null; isPublished: boolean; consentConfirmed: boolean };
 const kinds: { value: Item['kind']; label: string }[] = [{ value: 'ACTIVITY', label: 'Activity or event' }, { value: 'ANNOUNCEMENT', label: 'News or announcement' }, { value: 'STAFF_PROFILE', label: 'Staff profile' }, { value: 'STUDENT_PROJECT', label: 'Student project' }];
@@ -17,11 +18,12 @@ export default function SchoolContentManager({ items }: { items: Item[] }) {
     try {
       const form = new FormData(event.currentTarget);
       if (item) form.set('contentId', item.id);
+      await prepareDirectUploads(form, [{ name: 'image', kind: 'image' }]);
       const response = await fetch('/api/admin/site-content', { method: item ? 'PUT' : 'POST', body: form });
       const result = await response.json() as { error?: string; message?: string };
       setMessage(response.ok ? result.message ?? 'Saved.' : result.error ?? 'Could not save content.'); setError(!response.ok);
       if (response.ok) router.refresh();
-    } catch { setMessage('The server could not be reached. Try again.'); setError(true); }
+    } catch (err) { setMessage(err instanceof DirectUploadError ? err.message : 'The server could not be reached. Try again.'); setError(true); }
     finally { setPending(false); }
   }
   async function remove(item: Item) {

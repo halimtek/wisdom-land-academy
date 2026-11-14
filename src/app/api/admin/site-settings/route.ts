@@ -2,9 +2,10 @@ import * as z from 'zod';
 import { NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { roleIsAllowed } from '@/lib/auth-policy.mjs';
-import { removeSchoolImage, storeSchoolImage } from '@/lib/school-media';
 import { prisma } from '@/lib/prisma';
 import { revalidatePublicPages } from '@/lib/revalidate-public';
+import { removeObjectQuietly, StorageTimeoutError } from '@/lib/storage';
+import { acceptUpload, hasUpload, UploadRejectedError } from '@/lib/uploads';
 
 const MAX_FORM_BYTES = 11 * 1024 * 1024;
 const SettingsSchema = z.object({
@@ -62,7 +63,7 @@ export async function PUT(request: Request) {
   } catch (error) {
     return NextResponse.json({ error: error instanceof RangeError ? 'Each image is limited to 5 MB.' : 'Invalid form submission.' }, { status: error instanceof RangeError ? 413 : 400 });
   }
-  const allowed = new Set(['aboutText', 'contactPhone', 'contactEmail', 'contactAddress', 'logoImageAlt', 'heroImageAlt', 'logoImage', 'heroImage', 'removeLogo', 'removeHero']);
+  const allowed = new Set(['aboutText', 'contactPhone', 'contactEmail', 'contactAddress', 'logoImageAlt', 'heroImageAlt', 'logoImage', 'heroImage', 'logoImageKey', 'heroImageKey', 'removeLogo', 'removeHero']);
   for (const key of form.keys()) if (!allowed.has(key)) return NextResponse.json({ error: 'The form contains an unexpected field.' }, { status: 400 });
   const single = (name: string) => {
     const values = form.getAll(name);
@@ -95,8 +96,10 @@ export async function PUT(request: Request) {
     if (value === undefined || (value instanceof File && value.size === 0)) return { invalid: false as const, image: null };
     return value instanceof File ? { invalid: false as const, image: value } : { invalid: true as const, image: null };
   };
-  const logo = getImage('logoImage');
-  const hero = getImage('heroImage');
+  // Each image arrives as a file (local storage) or as the key of a direct upload
+  // to Supabase Storage (`logoImageKey` / `heroImageKey`).
+  const logo = { invalid: getImage('logoImage').invalid, image: hasUpload(form, 'logoImage') };
+  const hero = { invalid: getImage('heroImage').invalid, image: hasUpload(form, 'heroImage') };
   if (logo.invalid || hero.invalid || (logo.image && removeLogo) || (hero.image && removeHero)) return NextResponse.json({ error: 'Choose one image action for each image.' }, { status: 400 });
   if (logo.image && !parsed.data.logoImageAlt) return NextResponse.json({ error: 'Add alternative text for the logo.' }, { status: 400 });
   if (hero.image && !parsed.data.heroImageAlt) return NextResponse.json({ error: 'Add alternative text for the hero image.' }, { status: 400 });
@@ -104,9 +107,10 @@ export async function PUT(request: Request) {
   const existing = await prisma.schoolSettings.findUnique({ where: { id: 'main' } });
   let newLogoPath: string | undefined;
   let newHeroPath: string | undefined;
+  let committed = false;
   try {
-    if (logo.image) newLogoPath = await storeSchoolImage(logo.image);
-    if (hero.image) newHeroPath = await storeSchoolImage(hero.image);
+    newLogoPath = (await acceptUpload('image', form, 'logoImage')) ?? undefined;
+    newHeroPath = (await acceptUpload('image', form, 'heroImage')) ?? undefined;
     await prisma.schoolSettings.upsert({
       where: { id: 'main' },
       create: {
@@ -131,13 +135,20 @@ export async function PUT(request: Request) {
         ...(newHeroPath ? { heroImagePath: newHeroPath } : removeHero ? { heroImagePath: null } : {}),
       },
     });
-    if (existing?.logoImagePath && (newLogoPath || removeLogo)) await removeSchoolImage(existing.logoImagePath).catch(() => undefined);
-    if (existing?.heroImagePath && (newHeroPath || removeHero)) await removeSchoolImage(existing.heroImagePath).catch(() => undefined);
+    committed = true;
+    // Previous images are removed only after the settings point to the new ones.
+    if (existing?.logoImagePath && (newLogoPath || removeLogo)) await removeObjectQuietly(existing.logoImagePath, 'logo replaced');
+    if (existing?.heroImagePath && (newHeroPath || removeHero)) await removeObjectQuietly(existing.heroImagePath, 'hero image replaced');
     revalidatePublicPages();
     return NextResponse.json({ message: 'School website settings saved.' });
-  } catch {
-    if (newLogoPath) await removeSchoolImage(newLogoPath).catch(() => undefined);
-    if (newHeroPath) await removeSchoolImage(newHeroPath).catch(() => undefined);
+  } catch (error) {
+    if (!committed) {
+      await removeObjectQuietly(newLogoPath, 'settings save failed');
+      await removeObjectQuietly(newHeroPath, 'settings save failed');
+    }
+    if (error instanceof UploadRejectedError) return NextResponse.json({ error: error.message }, { status: 400 });
+    console.error('[admin/site-settings] Settings could not be saved', error);
+    if (error instanceof StorageTimeoutError) return NextResponse.json({ error: 'File storage did not respond in time. Nothing was changed; please try again.' }, { status: 504 });
     return NextResponse.json({ error: 'Settings could not be saved. Check private storage and try again.' }, { status: 500 });
   }
 }
