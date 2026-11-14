@@ -5,6 +5,8 @@ import { useMemo, useState } from 'react';
 import { BookOpen, Search, X } from 'lucide-react';
 import { progressPercent, recentBookIds } from '@/lib/reading-state.mjs';
 import { useReadingState } from '@/lib/reading-storage';
+import { useReading } from '@/lib/reading-client';
+import { ReaderBar } from '@/components/reading/whos-reading';
 import { BookCover } from './book-cover';
 import './library-v2.css';
 
@@ -25,12 +27,11 @@ type Tab = 'all' | 'general' | 'grade';
 const byName = (a: [string, string], b: [string, string]) => a[1].localeCompare(b[1], undefined, { numeric: true });
 const COVER_SIZES = '(max-width: 640px) 46vw, (max-width: 1024px) 28vw, 200px';
 
-type ReadingSnapshot = ReturnType<typeof useReadingState>;
+type ProgressInfo = { percent: number; resumePage: number; finished: boolean };
+type ProgressFor = (bookId: string) => ProgressInfo;
 
-function Card({ book, reading }: { book: CatalogBook; reading: ReadingSnapshot }) {
-  const local = reading.books[book.id];
-  const resumePage = local && local.page > 1 ? local.page : book.page && book.page > 1 ? book.page : 0;
-  const percent = local ? progressPercent(local) : 0;
+function Card({ book, progressFor }: { book: CatalogBook; progressFor: ProgressFor }) {
+  const { percent, resumePage, finished } = progressFor(book.id);
   const category = book.bookType === 'GENERAL' || !book.subject ? 'General Library' : `${book.grade?.name ?? ''} · ${book.subject.name}`;
   return (
     <Link href={`/library/books/${book.id}`} className="wla-card">
@@ -42,17 +43,17 @@ function Card({ book, reading }: { book: CatalogBook; reading: ReadingSnapshot }
         <p>{category}</p>
         <h3>{book.title}</h3>
         <span>{book.author || 'Wisdom Land Academy'}</span>
-        {resumePage > 0 && <small>Continue from page {resumePage}</small>}
+        {finished ? <small className="wr-finished-badge">✓ Finished</small> : resumePage > 0 && <small>Continue from page {resumePage}</small>}
       </div>
     </Link>
   );
 }
 
-function Section({ title, hint, list, reading }: { title: string; hint: string; list: CatalogBook[]; reading: ReadingSnapshot }) {
+function Section({ title, hint, list, progressFor }: { title: string; hint: string; list: CatalogBook[]; progressFor: ProgressFor }) {
   return (
     <section className="wla-section">
       <div className="wla-section-head"><h2>{title} <span>{list.length}</span></h2><p>{hint}</p></div>
-      <div className="wla-grid">{list.map((b) => <Card key={b.id} book={b} reading={reading} />)}</div>
+      <div className="wla-grid">{list.map((b) => <Card key={b.id} book={b} progressFor={progressFor} />)}</div>
     </section>
   );
 }
@@ -63,6 +64,19 @@ export default function LibraryCatalog({ books }: { books: CatalogBook[] }) {
   const [gradeId, setGradeId] = useState('all');
   const [subjectId, setSubjectId] = useState('all');
   const reading = useReadingState();
+  // Signed-in student ("Who's reading?"): their own saved progress. Otherwise this
+  // device's local progress (which siblings sharing the iPad have in common).
+  const { status, progress } = useReading();
+  const serverProgress = status?.reader ? progress : null;
+  const progressFor: ProgressFor = (bookId) => {
+    if (serverProgress) {
+      const p = serverProgress.get(bookId);
+      if (!p) return { percent: 0, resumePage: 0, finished: false };
+      return { percent: p.totalPages ? Math.round((p.pagesViewed / p.totalPages) * 100) : 0, resumePage: p.page > 1 ? p.page : 0, finished: p.finished };
+    }
+    const local = reading.books[bookId];
+    return { percent: local ? progressPercent(local) : 0, resumePage: local && local.page > 1 ? local.page : 0, finished: false };
+  };
 
   const grades = useMemo(() => {
     const map = new Map<string, string>();
@@ -93,13 +107,17 @@ export default function LibraryCatalog({ books }: { books: CatalogBook[] }) {
   const general = visible.filter((b) => b.bookType === 'GENERAL');
   const graded = visible.filter((b) => b.bookType === 'GRADE_BASED');
 
-  // Continue reading: browser-local progress joined to books that are still published.
+  // Continue reading: the signed-in student's own books, otherwise this device's local progress.
   const continueBooks = useMemo(() => {
     const byId = new Map(books.map((b) => [b.id, b]));
+    if (serverProgress) {
+      return [...serverProgress.values()].filter((p) => !p.finished && p.page > 1).slice(0, 8)
+        .map((p) => byId.get(p.bookId)).filter((b): b is CatalogBook => Boolean(b));
+    }
     return recentBookIds(reading, 8)
       .map((id) => byId.get(id))
       .filter((b): b is CatalogBook => Boolean(b) && (reading.books[b!.id]?.page ?? 0) > 1);
-  }, [books, reading]);
+  }, [books, reading, serverProgress]);
 
   const recentlyAdded = useMemo(() => [...books].sort((a, b) => b.createdAt.localeCompare(a.createdAt)).slice(0, 6), [books]);
 
@@ -120,6 +138,8 @@ export default function LibraryCatalog({ books }: { books: CatalogBook[] }) {
           {query && <button type="button" aria-label="Clear search" onClick={() => setQuery('')}><X size={20} aria-hidden="true" /></button>}
         </label>
       </header>
+
+      <ReaderBar />
 
       <div className="wla-filters">
         <div className="wla-tabs" role="tablist" aria-label="Library collections">
@@ -150,11 +170,11 @@ export default function LibraryCatalog({ books }: { books: CatalogBook[] }) {
       <p className="wla-hint" role="status">{visible.length} {visible.length === 1 ? 'book' : 'books'} found</p>
 
       {!filtering && continueBooks.length > 0 && (
-        <Section reading={reading} title="Continue reading" hint="Pick up right where you stopped on this device." list={continueBooks} />
+        <Section progressFor={progressFor} title="Continue reading" hint={serverProgress ? 'Pick up right where you stopped.' : 'Pick up right where you stopped on this device.'} list={continueBooks} />
       )}
-      {!filtering && books.length > 6 && <Section reading={reading} title="Recently added" hint="The newest books in the library." list={recentlyAdded} />}
-      {general.length > 0 && <Section reading={reading} title="General Library" hint="Books for everyone, outside the grade collections." list={general} />}
-      {graded.length > 0 && <Section reading={reading} title="Books by grade" hint="Learning materials organised by grade and subject." list={graded} />}
+      {!filtering && books.length > 6 && <Section progressFor={progressFor} title="Recently added" hint="The newest books in the library." list={recentlyAdded} />}
+      {general.length > 0 && <Section progressFor={progressFor} title="General Library" hint="Books for everyone, outside the grade collections." list={general} />}
+      {graded.length > 0 && <Section progressFor={progressFor} title="Books by grade" hint="Learning materials organised by grade and subject." list={graded} />}
 
       {visible.length === 0 && (
         <div className="wla-empty">

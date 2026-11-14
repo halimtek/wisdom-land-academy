@@ -9,12 +9,12 @@ export default async function AdminStudentsPage() {
     prisma.user.findMany({
       where: { role: 'STUDENT' },
       orderBy: [{ grade: { name: 'asc' } }, { fullName: 'asc' }],
-      select: { id: true, username: true, fullName: true, grade: { select: { name: true } } },
+      select: { id: true, username: true, fullName: true, readingPinHash: true, grade: { select: { name: true } } },
     }),
   ]);
 
   return <>
     <div className="admin-page-heading"><div><span className="welcome-label">SCHOOL ADMINISTRATION</span><h1>Manage Students</h1><p>Create school accounts and assign each student to a grade.</p></div><span className="count-badge">{students.length} {students.length === 1 ? 'student' : 'students'}</span></div>
-    <StudentManager grades={grades} students={students} />
+    <StudentManager grades={grades} students={students.map(({ readingPinHash, ...student }) => ({ ...student, hasReadingPin: Boolean(readingPinHash) }))} />
   </>;
 }

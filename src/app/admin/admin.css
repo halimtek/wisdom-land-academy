@@ -241,3 +241,12 @@ a.ad-stat:hover { border-color: #c7ccd6; }
 @media (prefers-reduced-motion: reduce) {
   .al-loading-line.is-active, .al-spin, .al-skeleton { animation: none; }
 }
+
+/* Students page: reading PIN control */
+.student-pin { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-left: auto; }
+.student-pin-state { display: inline-flex; align-items: center; gap: 5px; padding: 4px 9px; border-radius: 12px; background: #f3f4f7; color: #5f6b7d; font-size: 12px; font-weight: 700; }
+.student-pin-state.is-set { background: #e8f4ee; color: #1f6b4a; }
+.student-pin-cancel { min-height: 32px; padding: 0 8px; border: 0; border-radius: 5px; background: none; color: var(--wla-blue); font: 600 13px Arial, Helvetica, sans-serif; text-decoration: underline; cursor: pointer; }
+.student-pin-form { display: flex; align-items: center; gap: 6px; }
+.student-pin-form input { width: 92px; min-height: 36px; padding: 0 10px; border: 1px solid #d5d9e1; border-radius: 6px; font: 15px Arial, Helvetica, sans-serif; letter-spacing: .2em; }
+.student-pin .action-feedback { flex-basis: 100%; text-align: right; font-size: 12px; }

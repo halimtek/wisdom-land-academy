@@ -9,6 +9,8 @@ import {
 } from 'lucide-react';
 import { clampPage, progressPercent } from '@/lib/reading-state.mjs';
 import { getReadingState, saveProgress, saveZoomPreference, toggleBookmarkFor, useReadingState } from '@/lib/reading-storage';
+import { useReadingTracker } from '@/components/reading/use-reading-tracker';
+import { ReaderChip, useIdleSignOut } from '@/components/reading/whos-reading';
 import '../../../library-v2.css';
 
 /*
@@ -191,6 +193,7 @@ function ReaderInner({ bookId, title, author, backHref }: { bookId: string; titl
   const [bookmarksOpen, setBookmarksOpen] = useState(false);
   const [resumeNotice, setResumeNotice] = useState(initial.page > 1 ? initial.page : 0);
 
+  const [signedOutNotice, setSignedOutNotice] = useState(false);
   const readingState = useReadingState();
   const bookmarks = readingState.books[bookId]?.bookmarks ?? [];
   const isBookmarked = bookmarks.includes(page);
@@ -527,6 +530,17 @@ function ReaderInner({ bookId, title, author, backHref }: { bookId: string; titl
     (document.activeElement as HTMLElement | null)?.blur();
   };
 
+  // Reading tracking for signed-in students ("Who's reading?"); anonymous reading is not tracked.
+  const tracking = useReadingTracker({ bookId, page, numPages, ready: phase === 'ready' });
+  useIdleSignOut(tracking.signedIn, () => setSignedOutNotice(true));
+  // A signed-in student resumes from their own saved page (siblings may share this iPad).
+  const resumedFromServer = useRef(false);
+  useEffect(() => {
+    if (phase !== 'ready' || resumedFromServer.current || !tracking.serverPage) return;
+    resumedFromServer.current = true;
+    if (tracking.serverPage !== pageRef.current) { goTo(tracking.serverPage); setResumeNotice(tracking.serverPage); }
+  }, [phase, tracking.serverPage, goTo]);
+
   const percent = progressPercent({ page, numPages });
   const ready = phase === 'ready';
   const zoomLabel = shownScale > 0 ? `${Math.round(shownScale * 100)}%` : '–';
@@ -542,6 +556,7 @@ function ReaderInner({ bookId, title, author, backHref }: { bookId: string; titl
           <strong>{title}</strong>
           <span>{author || 'Wisdom Land Academy'}</span>
         </div>
+        <ReaderChip />
         <Link href="/library" className="wla-icon-button" aria-label="Return to the library" title="Library" onClick={flushProgress}>
           <Library size={22} aria-hidden="true" />
         </Link>
@@ -611,6 +626,20 @@ function ReaderInner({ bookId, title, author, backHref }: { bookId: string; titl
             <span>Continuing from page {resumeNotice}.</span>
             <button type="button" onClick={() => { goTo(1); setResumeNotice(0); }}>Start from page 1</button>
             <button type="button" aria-label="Dismiss" onClick={() => setResumeNotice(0)}><X size={18} aria-hidden="true" /></button>
+          </div>
+        )}
+
+        {tracking.finishedNow && (
+          <div className="wla-toast wr-toast-finished" role="status">
+            <span>🎉 You finished this book! It now counts in My reading.</span>
+            <button type="button" aria-label="Dismiss" onClick={tracking.dismissFinished}><X size={18} aria-hidden="true" /></button>
+          </div>
+        )}
+
+        {signedOutNotice && (
+          <div className="wla-toast" role="status">
+            <span>Signed out after 15 minutes without reading. Tap “Who’s reading?” to continue counting.</span>
+            <button type="button" aria-label="Dismiss" onClick={() => setSignedOutNotice(false)}><X size={18} aria-hidden="true" /></button>
           </div>
         )}
 

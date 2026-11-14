@@ -62,3 +62,28 @@ export async function createStudent(_state: StudentActionState, formData: FormDa
 
   return { success: `Student account @${username} created. The temporary password is not stored in plain text; share it with the student through your school-approved channel.` };
 }
+
+const PinSchema = z.object({
+  studentId: z.string().trim().min(1).max(100),
+  pin: z.string().regex(/^\d{4}$/),
+});
+
+/** Sets (or changes) a student's 4-digit reading PIN. Admins only; only a hash is stored. */
+export async function setReadingPin(_state: StudentActionState, formData: FormData): Promise<StudentActionState> {
+  await requireRole('ADMIN');
+  const parsed = PinSchema.safeParse({ studentId: formData.get('studentId'), pin: formData.get('pin') });
+  if (!parsed.success) return { error: 'Enter exactly 4 digits.' };
+  const student = await prisma.user.findUnique({ where: { id: parsed.data.studentId }, select: { id: true, role: true, fullName: true } });
+  if (!student || student.role !== 'STUDENT') return { error: 'Reading PINs can only be set for student accounts.' };
+  await prisma.user.update({ where: { id: student.id }, data: { readingPinHash: await argon2.hash(parsed.data.pin, { type: argon2.argon2id }) } });
+  return { success: `Reading PIN saved for ${student.fullName}.` };
+}
+
+/** Removes a student's reading PIN (they then switch readers with their password). */
+export async function clearReadingPin(_state: StudentActionState, formData: FormData): Promise<StudentActionState> {
+  await requireRole('ADMIN');
+  const studentId = z.string().trim().min(1).max(100).safeParse(formData.get('studentId'));
+  if (!studentId.success) return { error: 'Invalid student.' };
+  const { count } = await prisma.user.updateMany({ where: { id: studentId.data, role: 'STUDENT' }, data: { readingPinHash: null } });
+  return count ? { success: 'Reading PIN removed.' } : { error: 'Student not found.' };
+}
