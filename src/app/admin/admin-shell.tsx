@@ -1,6 +1,6 @@
 'use client';
 
-import { BookOpen, LayoutDashboard, LogOut, Newspaper, Settings } from 'lucide-react';
+import { BookOpen, GraduationCap, LayoutDashboard, LogOut, Newspaper, Settings } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
@@ -8,11 +8,15 @@ import type { ReactNode } from 'react';
 import { logout } from '@/app/actions/auth';
 
 const links = [
-  { href: '/admin/books', label: 'Manage Books', Icon: BookOpen },
   { href: '/admin', label: 'Dashboard', Icon: LayoutDashboard },
+  { href: '/admin/books', label: 'Manage Books', Icon: BookOpen },
+  { href: '/admin/students', label: 'Students', Icon: GraduationCap },
   { href: '/admin/content', label: 'Website Content', Icon: Newspaper },
   { href: '/admin/settings', label: 'Settings', Icon: Settings },
 ];
+
+// The dashboard is active only on /admin itself; other sections also on their sub-pages.
+const isActive = (pathname: string, href: string) => (href === '/admin' ? pathname === href : pathname === href || pathname.startsWith(`${href}/`));
 
 export default function AdminShell({ children, fullName }: { children: ReactNode; fullName: string }) {
   const pathname = usePathname();
@@ -23,8 +27,8 @@ export default function AdminShell({ children, fullName }: { children: ReactNode
       <div className="admin-nav-label">ADMINISTRATION</div>
       <nav className="admin-navigation" aria-label="Administrator navigation">
         {links.map(({ href, label, Icon }) => {
-          const active = pathname === href;
-          return <Link href={href} className={`admin-nav-link${active ? ' active' : ''}`} aria-current={active ? 'page' : undefined} key={href}><Icon size={18} /><span>{label}</span></Link>;
+          const active = isActive(pathname, href);
+          return <Link href={href} className={`admin-nav-link${active ? ' active' : ''}`} aria-current={active ? 'page' : undefined} key={href}><Icon size={18} aria-hidden="true" /><span>{label}</span></Link>;
         })}
         <form action={logout} className="admin-logout-form"><button className="admin-nav-link" type="submit"><LogOut size={18} /><span>Logout</span></button></form>
       </nav>

@@ -1,14 +1,14 @@
 'use client';
 
-import { FileText, Globe2, LockKeyhole, Plus, Trash2, Upload, Users } from 'lucide-react';
+import { Globe2, LockKeyhole, Plus, Upload } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useActionState, useEffect, useState, type FormEvent } from 'react';
-import { createGrade, createSubject, deleteBook } from '@/app/actions/books';
+import { useActionState, useEffect, useRef, useState, type FormEvent } from 'react';
+import { createGrade, createSubject } from '@/app/actions/books';
 import type { BookActionState } from '@/app/actions/books';
-import { DirectUploadError, prepareDirectUploads } from '@/lib/direct-upload';
+import { DirectUploadError, prepareDirectUploads, type DirectUploadProgress } from '@/lib/direct-upload';
 
-type GradeOption = { id: string; name: string; subjects: { id: string; name: string }[] };
-type ManagedBook = {
+export type GradeOption = { id: string; name: string; subjects: { id: string; name: string }[] };
+export type ManagedBook = {
   id: string; title: string; author: string | null; description: string | null; subjectId: string | null; bookType: 'GRADE_BASED' | 'GENERAL'; coverImagePath: string | null; accessAllStudents: boolean; isPublished: boolean;
   subject: { id: string; name: string; grade: { id: string; name: string } } | null;
   allowedGrades: { grade: { id: string; name: string } }[];
@@ -16,18 +16,7 @@ type ManagedBook = {
   _count: { progress: number };
 };
 
-export default function BookManager({ grades, books }: { grades: GradeOption[]; books: ManagedBook[] }) {
-  return <>
-    <CatalogSetup grades={grades} />
-    <BookEditor grades={grades} />
-    <section className="managed-books">
-      <div className="section-heading"><div><span className="welcome-label">CURRENT COLLECTION</span><h2>Books in the library</h2></div></div>
-      {books.length ? <div className="book-admin-list">{books.map((book) => <BookCard key={book.id} book={book} grades={grades} />)}</div> : <div className="empty-admin"><FileText size={26} /><p>No books yet. Add the first PDF textbook above.</p></div>}
-    </section>
-  </>;
-}
-
-function CatalogSetup({ grades }: { grades: GradeOption[] }) {
+export function CatalogSetup({ grades }: { grades: GradeOption[] }) {
   const router = useRouter();
   const [gradeState, gradeAction, addingGrade] = useActionState(createGrade, {} as BookActionState);
   const [subjectState, subjectAction, addingSubject] = useActionState(createSubject, {} as BookActionState);
@@ -53,7 +42,12 @@ function ActionFeedback({ state }: { state: BookActionState }) {
   return <p className={state.error ? 'action-feedback error' : 'action-feedback'} role={state.error ? 'alert' : 'status'} aria-live="polite">{state.error ?? state.success}</p>;
 }
 
-function BookEditor({ grades, book }: { grades: GradeOption[]; book?: ManagedBook }) {
+/**
+ * Create/edit form with direct-to-storage upload and real-time progress.
+ * `onBusyChange` lets a surrounding dialog block closing during an upload;
+ * `onSaved` is called after the server confirmed the save.
+ */
+export function BookEditor({ grades, book, onBusyChange, onSaved }: { grades: GradeOption[]; book?: ManagedBook; onBusyChange?: (busy: boolean) => void; onSaved?: (message: string) => void }) {
   const router = useRouter();
   const [bookType, setBookType] = useState<'GRADE_BASED' | 'GENERAL'>(book?.bookType ?? 'GRADE_BASED');
   const [gradeId, setGradeId] = useState(book?.subject?.grade.id ?? grades[0]?.id ?? '');
@@ -63,23 +57,39 @@ function BookEditor({ grades, book }: { grades: GradeOption[]; book?: ManagedBoo
   const [pending, setPending] = useState(false);
   const [feedback, setFeedback] = useState('');
   const [feedbackError, setFeedbackError] = useState(false);
+  // Upload progress: `percent` null = waiting (no byte count available).
+  const [progress, setProgress] = useState<{ label: string; percent: number | null } | null>(null);
+  const submitting = useRef(false); // blocks a second submit (double click, Enter) while one is running
   const subjects = grades.find((grade) => grade.id === gradeId)?.subjects ?? [];
   const selectedSubjectId = subjects.some((subject) => subject.id === subjectId) ? subjectId : '';
 
+  function showUploadProgress(update: DirectUploadProgress) {
+    const what = update.kind === 'pdf' ? 'PDF' : 'cover';
+    if (update.stage === 'preparing') setProgress({ label: `Preparing ${what} upload…`, percent: null });
+    else setProgress({ label: `Uploading ${what}:`, percent: update.percent });
+  }
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (submitting.current) return;
+    submitting.current = true;
     const form = event.currentTarget;
     setPending(true);
+    onBusyChange?.(true);
     setFeedback('');
     setFeedbackError(false);
+    setProgress({ label: 'Preparing upload…', percent: null });
     try {
       const data = new FormData(form);
       // Supabase storage: PDF and cover go straight to the private bucket first.
-      await prepareDirectUploads(data, [{ name: 'file', kind: 'pdf' }, { name: 'cover', kind: 'image' }]);
+      await prepareDirectUploads(data, [{ name: 'file', kind: 'pdf' }, { name: 'cover', kind: 'image' }], showUploadProgress);
+      setProgress({ label: 'Saving book details…', percent: null });
       const response = await fetch('/api/admin/books', { method: 'POST', body: data });
       const result = await response.json() as { error?: string; message?: string };
-      if (!response.ok) { setFeedbackError(true); setFeedback(result.error ?? 'The book could not be saved.'); return; }
+      if (!response.ok) { setProgress(null); setFeedbackError(true); setFeedback(result.error ?? 'The book could not be saved.'); return; }
+      setProgress({ label: 'Upload complete.', percent: 100 });
       setFeedback(result.message ?? 'Saved.');
+      onSaved?.(result.message ?? 'Saved.');
       if (!book) {
         form.reset();
         setBookType('GRADE_BASED');
@@ -90,10 +100,13 @@ function BookEditor({ grades, book }: { grades: GradeOption[]; book?: ManagedBoo
       }
       router.refresh();
     } catch (error) {
+      setProgress(null);
       setFeedbackError(true);
       setFeedback(error instanceof DirectUploadError ? error.message : 'The server could not be reached. Please try again.');
     } finally {
+      submitting.current = false;
       setPending(false);
+      onBusyChange?.(false);
     }
   }
 
@@ -119,28 +132,33 @@ function BookEditor({ grades, book }: { grades: GradeOption[]; book?: ManagedBoo
       <label className="form-field form-field-wide file-picker">Cover image <span className="field-optional">Optional</span><input name="cover" type="file" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" /><span className="file-note">Optional cover image for the library catalog.</span></label>
     </div>
     <div className="publish-control"><label><input type="checkbox" name="isPublished" defaultChecked={book?.isPublished ?? false} /><span><strong>Publish to school library</strong><small>Anyone on the school network can read a published book. Draft books are unavailable to all readers.</small></span></label><span className={book?.isPublished ? 'publish-state published' : 'publish-state'}>{book?.isPublished ? <><Globe2 size={14} />Published</> : <><LockKeyhole size={14} />Draft</>}</span></div>
+    {progress && <UploadProgress label={progress.label} percent={progress.percent} />}
     <div className="book-form-footer"><p className={feedbackError ? 'action-feedback error' : 'action-feedback'} role={feedbackError ? 'alert' : 'status'} aria-live="polite">{feedback}</p><button className="primary-action" disabled={pending || (bookType === 'GRADE_BASED' && (!grades.length || !subjects.length))}><Upload size={16} />{pending ? 'Saving…' : book ? 'Save book' : 'Upload book'}</button></div>
     {bookType === 'GRADE_BASED' && (!grades.length ? <p className="inline-warning">Create a grade and its subjects in the Grades and subjects section above to enable book uploads.</p> : gradeId && !subjects.length ? <p className="inline-warning">This grade has no subjects yet. Add one in the Grades and subjects section above.</p> : null)}
   </form>;
 }
 
-function BookCard({ book, grades }: { book: ManagedBook; grades: GradeOption[] }) {
-  const router = useRouter();
-  const [deleteState, deleteAction, deleting] = useActionState(deleteBook, {} as BookActionState);
-  useEffect(() => {
-    if (deleteState.success) router.refresh();
-  }, [deleteState, router]);
-
-  return <article className="book-admin-card">
-    <details>
-      <summary className="book-card-summary"><span className="book-card-icon"><FileText size={19} /></span><span className="book-card-copy"><strong>{book.title}</strong><small>{book.bookType === 'GENERAL' ? 'General Library' : `${book.subject?.grade.name ?? ''} · ${book.subject?.name ?? ''}`}</small></span><span className={`book-publication-pill${book.isPublished ? ' published' : ''}`}>{book.isPublished ? <Globe2 size={13} /> : <LockKeyhole size={13} />}{book.isPublished ? 'Public' : 'Draft'}</span><span className="book-access-count" title="Preserved individual permission records"><Users size={14} />{book.permissions.length}</span><span className="edit-label">Edit</span></summary>
-      <div className="book-card-expanded"><BookEditor key={book.id} grades={grades} book={book} /></div>
-    </details>
-    <div className="permission-section"><div className="permission-heading"><Users size={16} /><div><strong>Individual student grants</strong><span>{book.permissions.length} existing grant {book.permissions.length === 1 ? 'record is' : 'records are'} preserved. Publication controls library access now.</span></div></div>
-      <p className="legacy-permission-note">Published books are available to everyone on the LAN. Draft books are unavailable to everyone, even when an older student grant exists.</p>
-      {book._count.progress > 0 && <p className="progress-note">{book._count.progress} saved reading {book._count.progress === 1 ? 'record' : 'records'} · deletion is disabled to preserve progress.</p>}
+/** Progress bar + status text. Only the stage text is announced to screen readers
+ *  (not every percent change); the bar exposes its value through progressbar ARIA. */
+function UploadProgress({ label, percent }: { label: string; percent: number | null }) {
+  const known = percent !== null;
+  return (
+    <div className="upload-progress">
+      <div className="upload-progress-text">
+        <span role="status" aria-live="polite">{label}</span>
+        {known && <span className="upload-progress-percent" aria-hidden="true">{percent}%</span>}
+      </div>
+      <div
+        className={known ? 'upload-progress-track' : 'upload-progress-track is-waiting'}
+        role="progressbar"
+        aria-label={label}
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={known ? percent : undefined}
+        aria-valuetext={known ? `${percent}%` : 'In progress'}
+      >
+        <span className="upload-progress-bar" style={known ? { width: `${percent}%` } : undefined} />
+      </div>
     </div>
-    <div className="delete-area"><form action={deleteAction} onSubmit={(event) => { if (!window.confirm(`Delete “${book.title}”?`)) event.preventDefault(); }}><input type="hidden" name="bookId" value={book.id} /><button className="delete-action" disabled={deleting || book._count.progress > 0}><Trash2 size={15} />{deleting ? 'Deleting…' : 'Delete book'}</button><span className="action-feedback" role="status">{deleteState.error ?? deleteState.success}</span></form></div>
-  </article>;
+  );
 }
-

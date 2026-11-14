@@ -1,12 +1,14 @@
 'use server';
 
 import * as z from 'zod';
+import { parsePublicationRequest, storageKeysToRemove } from '@/lib/admin-books.mjs';
 import { requireRole } from '@/lib/auth';
-import { removeObjectQuietly } from '@/lib/storage';
+import { removeObject } from '@/lib/storage';
 import { prisma } from '@/lib/prisma';
 import { revalidatePublicPages } from '@/lib/revalidate-public';
 
 export type BookActionState = { error?: string; success?: string };
+export type PublicationResult = { error?: string; success?: string; updated?: number };
 const IdSchema = z.string().trim().min(1).max(100);
 const GradeNameSchema = z.string().trim().min(1).max(80);
 const SubjectNameSchema = z.string().trim().min(1).max(100);
@@ -48,22 +50,82 @@ export async function createSubject(_state: BookActionState, formData: FormData)
   return { success: 'Subject added to the selected grade.' };
 }
 
-export async function deleteBook(_state: BookActionState, formData: FormData): Promise<BookActionState> {
+async function storageReferenceCount(key: string) {
+  const [books, content, settings] = await Promise.all([
+    prisma.book.count({ where: { OR: [{ filePath: key }, { coverImagePath: key }] } }),
+    prisma.schoolContent.count({ where: { imagePath: key } }),
+    prisma.schoolSettings.count({ where: { OR: [{ logoImagePath: key }, { heroImagePath: key }] } }),
+  ]);
+  return books + content + settings;
+}
+
+/**
+ * Deletes one book: the database row first (permissions and grade access cascade),
+ * then its PDF and cover from storage — only files no other record still uses.
+ * Books with student reading progress are never deleted.
+ *
+ * The row is locked (FOR UPDATE) and re-checked inside the transaction, so a
+ * concurrent edit (which also locks the row) or new reading progress (whose foreign
+ * key needs the row) cannot slip in between the check and the delete, and storage
+ * cleanup uses exactly the files the deleted row pointed to.
+ */
+export async function deleteBookById(bookId: unknown): Promise<BookActionState> {
   await requireRole('ADMIN');
-  const parsedId = IdSchema.safeParse(formData.get('bookId'));
+  const parsedId = IdSchema.safeParse(bookId);
   if (!parsedId.success) return { error: 'Invalid book.' };
 
-  const book = await prisma.book.findUnique({
-    where: { id: parsedId.data },
-    select: { id: true, filePath: true, _count: { select: { progress: true } } },
-  });
-  if (!book) return { error: 'Book not found.' };
-  if (book._count.progress > 0) return { error: 'This book has student reading progress, so it cannot be deleted.' };
-
-  await prisma.book.delete({ where: { id: book.id } });
-  await removeObjectQuietly(book.filePath, 'book deleted');
+  type Locked = { id: string; title: string; filePath: string; coverImagePath: string | null };
+  let outcome: { kind: 'missing' } | { kind: 'has-progress'; title: string } | { kind: 'deleted'; book: Locked };
+  try {
+    outcome = await prisma.$transaction(async (tx) => {
+      const [row] = await tx.$queryRaw<Locked[]>`
+        SELECT "id", "title", "filePath", "coverImagePath" FROM "Book" WHERE "id" = ${parsedId.data} FOR UPDATE`;
+      if (!row) return { kind: 'missing' as const };
+      if (await tx.readingProgress.count({ where: { bookId: row.id } }) > 0) return { kind: 'has-progress' as const, title: row.title };
+      await tx.book.delete({ where: { id: row.id } });
+      return { kind: 'deleted' as const, book: row };
+    });
+  } catch (error) {
+    console.error(`[books] Could not delete book ${parsedId.data}`, error);
+    return { error: 'The book could not be deleted. Nothing was changed; please try again.' };
+  }
+  if (outcome.kind === 'missing') return { error: 'This book no longer exists. The list has been refreshed.' };
+  if (outcome.kind === 'has-progress') return { error: `“${outcome.title}” has student reading progress, so it cannot be deleted. Unpublish it instead.` };
+  const { book } = outcome;
   revalidatePublicPages();
-  return { success: 'Book deleted.' };
+
+  const counts = new Map<string, number>();
+  for (const key of [book.filePath, book.coverImagePath]) if (key) counts.set(key, await storageReferenceCount(key));
+  const failed: string[] = [];
+  for (const key of storageKeysToRemove(book, (key) => counts.get(key) ?? 1)) {
+    try {
+      await removeObject(key);
+    } catch (error) {
+      failed.push(key);
+      console.error(`[storage] Could not remove ${key} (book ${book.id} deleted)`, error);
+    }
+  }
+  if (failed.length) return { success: `“${book.title}” was deleted. Its stored file could not be removed and has been logged for cleanup.` };
+  return { success: `“${book.title}” was deleted.` };
+}
+
+/**
+ * Publishes or unpublishes one or more books. Validated and authorized on the
+ * server; only books whose state actually changes are updated.
+ */
+export async function setBooksPublication(input: unknown): Promise<PublicationResult> {
+  await requireRole('ADMIN');
+  const request = parsePublicationRequest(input);
+  if (!request.ok) return { error: request.error };
+
+  const { count } = await prisma.book.updateMany({
+    where: { id: { in: request.ids }, isPublished: !request.publish },
+    data: { isPublished: request.publish },
+  });
+  if (count > 0) revalidatePublicPages();
+  const verb = request.publish ? 'published' : 'unpublished';
+  if (count === 0) return { success: request.ids.length === 1 ? `The book is already ${verb}.` : `The selected books are already ${verb}.`, updated: 0 };
+  return { success: `${count} ${count === 1 ? 'book' : 'books'} ${verb}.`, updated: count };
 }
 
 export async function grantBookPermission(_state: BookActionState, formData: FormData): Promise<BookActionState> {
