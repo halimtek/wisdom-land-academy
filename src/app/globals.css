@@ -162,6 +162,14 @@ button, input { font: inherit; }
 .secondary-action:hover { background: #dce9df; }
 .action-feedback { min-height: 14px; margin: 0; color: #61796a; font-size: 10px; }
 .action-feedback.error, .permission-error { color: #a33c32; }
+.upload-progress { display: grid; gap: 7px; margin-top: 16px; padding: 12px 14px; border: 1px solid #dfe7e0; border-radius: 8px; background: #f6faf6; }
+.upload-progress-text { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; color: #2d5443; font-size: 12px; font-weight: 600; }
+.upload-progress-percent { font-variant-numeric: tabular-nums; }
+.upload-progress-track { position: relative; height: 10px; overflow: hidden; border-radius: 999px; background: #dfe8e1; }
+.upload-progress-bar { display: block; height: 100%; width: 0; border-radius: inherit; background: #205c47; transition: width .25s ease-out; }
+.upload-progress-track.is-waiting .upload-progress-bar { width: 35%; animation: upload-progress-wait 1.3s ease-in-out infinite; }
+@keyframes upload-progress-wait { from { transform: translateX(-100%); } to { transform: translateX(290%); } }
+@media (prefers-reduced-motion: reduce) { .upload-progress-bar { transition: none; } .upload-progress-track.is-waiting .upload-progress-bar { width: 100%; opacity: .45; animation: none; } }
 .inline-warning { color: #8a6934; font-size: 11px; }
 .managed-books { margin-top: 43px; }
 .section-heading { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 13px; }
