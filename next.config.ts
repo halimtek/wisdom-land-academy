@@ -11,6 +11,16 @@ import type { NextConfig } from "next";
 // reader pages still render per request.
 const nextConfig: NextConfig = {
   turbopack: {},
+  images: {
+    // Only these local paths may be optimized, and only without a query string.
+    // Without this, any query string creates a new cache entry and a new image
+    // transformation, so the monthly optimization quota could be exhausted by
+    // requesting the same image with endless variants.
+    localPatterns: [
+      { pathname: '/api/site-media/**', search: '' },
+      { pathname: '/images/**', search: '' },
+    ],
+  },
 };
 
 export default nextConfig;
