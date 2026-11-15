@@ -12,7 +12,11 @@ import { revalidatePath } from 'next/cache';
  * contact details) appear on all of them, and edits are rare, so a broad
  * invalidation is simpler and safer than tracking which page shows what.
  * Pages are regenerated lazily on their next visit, not all at once.
+ *
+ * The root layout is app/[lang]/layout.tsx, so '/[lang]' with 'layout' refreshes
+ * every page in every language (/en, /am, /om, /ar).
  */
 export function revalidatePublicPages() {
+  revalidatePath('/[lang]', 'layout');
   revalidatePath('/', 'layout');
 }

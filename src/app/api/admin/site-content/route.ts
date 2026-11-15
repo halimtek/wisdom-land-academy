@@ -1,5 +1,5 @@
 import * as z from 'zod';
-import { NextResponse } from 'next/server';
+import { localizedJson } from '@/i18n/server';
 import type { SchoolContentKind } from '@/generated/prisma/enums';
 import { getCurrentUser } from '@/lib/auth';
 import { roleIsAllowed } from '@/lib/auth-policy.mjs';
@@ -28,8 +28,8 @@ const ContentSchema = z.object({
 
 async function adminResponse() {
   const user = await getCurrentUser();
-  if (!user) return NextResponse.json({ error: 'Authentication required.' }, { status: 401 });
-  if (!roleIsAllowed(user.role, ['ADMIN'])) return NextResponse.json({ error: 'Administrator access required.' }, { status: 403 });
+  if (!user) return localizedJson({ error: 'Authentication required.' }, { status: 401 });
+  if (!roleIsAllowed(user.role, ['ADMIN'])) return localizedJson({ error: 'Administrator access required.' }, { status: 403 });
   return null;
 }
 
@@ -125,27 +125,27 @@ async function writeContent(request: Request, update: boolean) {
   try {
     form = await readForm(request);
   } catch (error) {
-    return NextResponse.json({ error: error instanceof RangeError ? 'Images are limited to 5 MB.' : 'Invalid form submission.' }, { status: error instanceof RangeError ? 413 : 400 });
+    return localizedJson({ error: error instanceof RangeError ? 'Images are limited to 5 MB.' : 'Invalid form submission.' }, { status: error instanceof RangeError ? 413 : 400 });
   }
 
   const result = readContentData(form, update ? 'contentId' : undefined);
-  if (result.error) return NextResponse.json({ error: result.error }, { status: 400 });
-  if (update && !result.content.contentId) return NextResponse.json({ error: 'Content identifier is required.' }, { status: 400 });
+  if (result.error) return localizedJson({ error: result.error }, { status: 400 });
+  if (update && !result.content.contentId) return localizedJson({ error: 'Content identifier is required.' }, { status: 400 });
 
   let imagePath: string | undefined;
   if (result.image) {
     const signature = new Uint8Array(await result.image.slice(0, 12).arrayBuffer());
     const imageError = validateSchoolImageUpload({ filename: result.image.name, mimeType: result.image.type, size: result.image.size, signature });
-    if (imageError) return NextResponse.json({ error: imageError }, { status: 400 });
+    if (imageError) return localizedJson({ error: imageError }, { status: 400 });
   }
-  if (hasUpload(form, 'image') && !result.content.imageAlt?.trim()) return NextResponse.json({ error: 'Add descriptive alternative text for the uploaded image.' }, { status: 400 });
+  if (hasUpload(form, 'image') && !result.content.imageAlt?.trim()) return localizedJson({ error: 'Add descriptive alternative text for the uploaded image.' }, { status: 400 });
 
   let previousImage: string | null = null;
   let committed = false;
   try {
     if (update) {
       const previous = await prisma.schoolContent.findUnique({ where: { id: result.content.contentId }, select: { id: true, imagePath: true } });
-      if (!previous) return NextResponse.json({ error: 'Content item not found.' }, { status: 404 });
+      if (!previous) return localizedJson({ error: 'Content item not found.' }, { status: 404 });
       previousImage = previous.imagePath;
     }
 
@@ -172,13 +172,13 @@ async function writeContent(request: Request, update: boolean) {
     // The previous photo is removed only after the record no longer points to it.
     if (previousImage && (imagePath || result.removeImage)) await removeObjectQuietly(previousImage, 'content photo replaced');
     revalidatePublicPages();
-    return NextResponse.json({ id: saved.id, message: update ? 'Website content updated.' : 'Website content created.' }, { status: update ? 200 : 201 });
+    return localizedJson({ id: saved.id, message: update ? 'Website content updated.' : 'Website content created.' }, { status: update ? 200 : 201 });
   } catch (error) {
     if (!committed) await removeObjectQuietly(imagePath, 'content save failed');
-    if (error instanceof UploadRejectedError) return NextResponse.json({ error: error.message }, { status: 400 });
+    if (error instanceof UploadRejectedError) return localizedJson({ error: error.message }, { status: 400 });
     console.error('[admin/site-content] Content could not be saved', error);
-    if (error instanceof StorageTimeoutError) return NextResponse.json({ error: 'File storage did not respond in time. Nothing was changed; please try again.' }, { status: 504 });
-    return NextResponse.json({ error: 'Content could not be saved. Check private storage and try again.' }, { status: 500 });
+    if (error instanceof StorageTimeoutError) return localizedJson({ error: 'File storage did not respond in time. Nothing was changed; please try again.' }, { status: 504 });
+    return localizedJson({ error: 'Content could not be saved. Check private storage and try again.' }, { status: 500 });
   }
 }
 
@@ -186,11 +186,11 @@ export async function DELETE(request: Request) {
   const denied = await adminResponse();
   if (denied) return denied;
   const parsed = z.object({ contentId: z.string().trim().min(1).max(100) }).safeParse(await request.json().catch(() => null));
-  if (!parsed.success) return NextResponse.json({ error: 'Invalid content identifier.' }, { status: 400 });
+  if (!parsed.success) return localizedJson({ error: 'Invalid content identifier.' }, { status: 400 });
   const item = await prisma.schoolContent.findUnique({ where: { id: parsed.data.contentId }, select: { id: true, imagePath: true } });
-  if (!item) return NextResponse.json({ error: 'Content item not found.' }, { status: 404 });
+  if (!item) return localizedJson({ error: 'Content item not found.' }, { status: 404 });
   await prisma.schoolContent.delete({ where: { id: item.id } });
   revalidatePublicPages();
   await removeSchoolImage(item.imagePath).catch(() => undefined);
-  return NextResponse.json({ message: 'Website content deleted.' });
+  return localizedJson({ message: 'Website content deleted.' });
 }

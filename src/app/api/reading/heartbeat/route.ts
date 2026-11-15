@@ -1,10 +1,11 @@
-import { NextResponse } from 'next/server';
+import { localizedJson } from '@/i18n/server';
 import { getReader, readJsonBody } from '@/lib/reader-auth';
 import { recordHeartbeat } from '@/lib/reading-service';
 import { parseHeartbeat } from '@/lib/reading-tracker.mjs';
 import { prisma } from '@/lib/prisma';
 
-const json = (body: object, status = 200) => NextResponse.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
+// Error messages are returned in the visitor's language.
+const json = (body: object, status = 200) => localizedJson(body, { status, headers: { 'Cache-Control': 'no-store' } });
 
 // Reading update from the reader (about once a minute while a signed-in student reads).
 export async function POST(request: Request) {

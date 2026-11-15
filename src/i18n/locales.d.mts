@@ -1,0 +1,11 @@
+export type Locale = 'en' | 'am' | 'om' | 'ar';
+export const LOCALES: readonly Locale[];
+export const DEFAULT_LOCALE: Locale;
+export const LOCALE_COOKIE: string;
+export const LOCALE_INFO: Record<Locale, { name: string; short: string; dir: 'ltr' | 'rtl'; intl: string }>;
+export function isLocale(value: unknown): value is Locale;
+export function matchAcceptLanguage(header: string | null | undefined): Locale;
+export function localePath(locale: Locale, path: string): string;
+export function splitLocale(pathname: string): { locale: Locale | null; rest: string };
+export function fmt(template: string, values?: Record<string, string | number>): string;
+export function plural(n: number, forms: { one: string; other: string }): string;

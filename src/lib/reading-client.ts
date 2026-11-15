@@ -63,9 +63,10 @@ export async function readerAction(path: 'sign-in' | 'switch' | 'sign-out' | 'fo
     const response = await fetch(`/api/reading/${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     const data = await response.json().catch(() => ({})) as { error?: string; firstName?: string };
     if (response.ok) await refreshReading();
-    return { ok: response.ok, error: data.error, firstName: data.firstName };
+    return { ok: response.ok, error: data.error, firstName: data.firstName, offline: false };
   } catch {
-    return { ok: false, error: 'The library could not be reached. Check the connection and try again.' };
+    // No connection: the screen shows its own translated "could not be reached" message.
+    return { ok: false, error: undefined, firstName: undefined, offline: true };
   }
 }
 

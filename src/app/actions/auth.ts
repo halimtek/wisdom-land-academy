@@ -6,6 +6,8 @@ import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 import * as z from 'zod';
 import { createSession, destroySession, loginAttemptKey, loginLimits } from '@/lib/auth';
+import { localePath } from '@/i18n/locales.mjs';
+import { localizeResult, requestLocale } from '@/i18n/server';
 import { prisma } from '@/lib/prisma';
 
 const LoginSchema = z.object({
@@ -17,7 +19,12 @@ const LoginSchema = z.object({
 type LoginState = { error?: string };
 let fallbackHash: Promise<string> | undefined;
 
-export async function login(_state: LoginState, formData: FormData): Promise<LoginState> {
+export async function login(state: LoginState, formData: FormData): Promise<LoginState> {
+  // Errors are returned in the visitor's language; success redirects to the admin area.
+  return localizeResult(await attemptLogin(state, formData));
+}
+
+async function attemptLogin(_state: LoginState, formData: FormData): Promise<LoginState> {
   const parsed = LoginSchema.safeParse({ loginMode: formData.get('loginMode'), username: formData.get('username'), password: formData.get('password') });
   if (!parsed.success) return { error: 'Choose an account type and enter your username and password.' };
 
@@ -49,10 +56,10 @@ export async function login(_state: LoginState, formData: FormData): Promise<Log
 
   await prisma.loginAttempt.deleteMany({ where: { keyHash } });
   await createSession(user.id);
-  redirect('/admin');
+  redirect(localePath(await requestLocale(), '/admin'));
 }
 
 export async function logout() {
   await destroySession();
-  redirect('/');
+  redirect(localePath(await requestLocale(), '/'));
 }

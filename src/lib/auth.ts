@@ -5,6 +5,8 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { roleIsAllowed } from '@/lib/auth-policy.mjs';
 import type { UserRole } from '@/generated/prisma/enums';
+import { localePath } from '@/i18n/locales.mjs';
+import { requestLocale } from '@/i18n/server';
 import { prisma } from '@/lib/prisma';
 
 export const SESSION_COOKIE = 'wla_session';
@@ -39,13 +41,13 @@ export async function getCurrentUser(): Promise<AuthUser | null> {
 
 export async function requireUser(): Promise<AuthUser> {
   const user = await getCurrentUser();
-  if (!user) redirect('/');
+  if (!user) redirect(localePath(await requestLocale(), '/'));
   return user;
 }
 
 export async function requireRole(...roles: UserRole[]): Promise<AuthUser> {
   const user = await requireUser();
-  if (!roleIsAllowed(user.role, roles)) redirect('/library');
+  if (!roleIsAllowed(user.role, roles)) redirect(localePath(await requestLocale(), '/library'));
   return user;
 }
 

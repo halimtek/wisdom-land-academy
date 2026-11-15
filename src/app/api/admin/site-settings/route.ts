@@ -1,5 +1,5 @@
 import * as z from 'zod';
-import { NextResponse } from 'next/server';
+import { localizedJson } from '@/i18n/server';
 import { getCurrentUser } from '@/lib/auth';
 import { roleIsAllowed } from '@/lib/auth-policy.mjs';
 import { prisma } from '@/lib/prisma';
@@ -19,8 +19,8 @@ const SettingsSchema = z.object({
 
 async function requireAdmin() {
   const user = await getCurrentUser();
-  if (!user) return NextResponse.json({ error: 'Authentication required.' }, { status: 401 });
-  if (!roleIsAllowed(user.role, ['ADMIN'])) return NextResponse.json({ error: 'Administrator access required.' }, { status: 403 });
+  if (!user) return localizedJson({ error: 'Authentication required.' }, { status: 401 });
+  if (!roleIsAllowed(user.role, ['ADMIN'])) return localizedJson({ error: 'Administrator access required.' }, { status: 403 });
   return null;
 }
 
@@ -61,16 +61,16 @@ export async function PUT(request: Request) {
   try {
     form = await readForm(request);
   } catch (error) {
-    return NextResponse.json({ error: error instanceof RangeError ? 'Each image is limited to 5 MB.' : 'Invalid form submission.' }, { status: error instanceof RangeError ? 413 : 400 });
+    return localizedJson({ error: error instanceof RangeError ? 'Each image is limited to 5 MB.' : 'Invalid form submission.' }, { status: error instanceof RangeError ? 413 : 400 });
   }
   const allowed = new Set(['aboutText', 'contactPhone', 'contactEmail', 'contactAddress', 'logoImageAlt', 'heroImageAlt', 'logoImage', 'heroImage', 'logoImageKey', 'heroImageKey', 'removeLogo', 'removeHero']);
-  for (const key of form.keys()) if (!allowed.has(key)) return NextResponse.json({ error: 'The form contains an unexpected field.' }, { status: 400 });
+  for (const key of form.keys()) if (!allowed.has(key)) return localizedJson({ error: 'The form contains an unexpected field.' }, { status: 400 });
   const single = (name: string) => {
     const values = form.getAll(name);
     return values.length === 1 && typeof values[0] === 'string' ? values[0] : null;
   };
   if (['aboutText', 'contactPhone', 'contactEmail', 'contactAddress', 'logoImageAlt', 'heroImageAlt'].some((name) => form.getAll(name).length !== 1)) {
-    return NextResponse.json({ error: 'Each settings field must be provided once.' }, { status: 400 });
+    return localizedJson({ error: 'Each settings field must be provided once.' }, { status: 400 });
   }
   const parsed = SettingsSchema.safeParse({
     aboutText: single('aboutText'),
@@ -80,13 +80,13 @@ export async function PUT(request: Request) {
     logoImageAlt: single('logoImageAlt'),
     heroImageAlt: single('heroImageAlt'),
   });
-  if (!parsed.success) return NextResponse.json({ error: 'Check the contact details and image descriptions.' }, { status: 400 });
+  if (!parsed.success) return localizedJson({ error: 'Check the contact details and image descriptions.' }, { status: 400 });
 
   const boolField = (name: string) => {
     const values = form.getAll(name);
     return values.length <= 1 && (values.length === 0 || values[0] === 'on');
   };
-  if (!boolField('removeLogo') || !boolField('removeHero')) return NextResponse.json({ error: 'Invalid image option.' }, { status: 400 });
+  if (!boolField('removeLogo') || !boolField('removeHero')) return localizedJson({ error: 'Invalid image option.' }, { status: 400 });
   const removeLogo = form.get('removeLogo') === 'on';
   const removeHero = form.get('removeHero') === 'on';
   const getImage = (name: string) => {
@@ -100,9 +100,9 @@ export async function PUT(request: Request) {
   // to Supabase Storage (`logoImageKey` / `heroImageKey`).
   const logo = { invalid: getImage('logoImage').invalid, image: hasUpload(form, 'logoImage') };
   const hero = { invalid: getImage('heroImage').invalid, image: hasUpload(form, 'heroImage') };
-  if (logo.invalid || hero.invalid || (logo.image && removeLogo) || (hero.image && removeHero)) return NextResponse.json({ error: 'Choose one image action for each image.' }, { status: 400 });
-  if (logo.image && !parsed.data.logoImageAlt) return NextResponse.json({ error: 'Add alternative text for the logo.' }, { status: 400 });
-  if (hero.image && !parsed.data.heroImageAlt) return NextResponse.json({ error: 'Add alternative text for the hero image.' }, { status: 400 });
+  if (logo.invalid || hero.invalid || (logo.image && removeLogo) || (hero.image && removeHero)) return localizedJson({ error: 'Choose one image action for each image.' }, { status: 400 });
+  if (logo.image && !parsed.data.logoImageAlt) return localizedJson({ error: 'Add alternative text for the logo.' }, { status: 400 });
+  if (hero.image && !parsed.data.heroImageAlt) return localizedJson({ error: 'Add alternative text for the hero image.' }, { status: 400 });
 
   const existing = await prisma.schoolSettings.findUnique({ where: { id: 'main' } });
   let newLogoPath: string | undefined;
@@ -140,15 +140,15 @@ export async function PUT(request: Request) {
     if (existing?.logoImagePath && (newLogoPath || removeLogo)) await removeObjectQuietly(existing.logoImagePath, 'logo replaced');
     if (existing?.heroImagePath && (newHeroPath || removeHero)) await removeObjectQuietly(existing.heroImagePath, 'hero image replaced');
     revalidatePublicPages();
-    return NextResponse.json({ message: 'School website settings saved.' });
+    return localizedJson({ message: 'School website settings saved.' });
   } catch (error) {
     if (!committed) {
       await removeObjectQuietly(newLogoPath, 'settings save failed');
       await removeObjectQuietly(newHeroPath, 'settings save failed');
     }
-    if (error instanceof UploadRejectedError) return NextResponse.json({ error: error.message }, { status: 400 });
+    if (error instanceof UploadRejectedError) return localizedJson({ error: error.message }, { status: 400 });
     console.error('[admin/site-settings] Settings could not be saved', error);
-    if (error instanceof StorageTimeoutError) return NextResponse.json({ error: 'File storage did not respond in time. Nothing was changed; please try again.' }, { status: 504 });
-    return NextResponse.json({ error: 'Settings could not be saved. Check private storage and try again.' }, { status: 500 });
+    if (error instanceof StorageTimeoutError) return localizedJson({ error: 'File storage did not respond in time. Nothing was changed; please try again.' }, { status: 504 });
+    return localizedJson({ error: 'Settings could not be saved. Check private storage and try again.' }, { status: 500 });
   }
 }

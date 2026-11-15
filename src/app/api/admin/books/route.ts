@@ -1,5 +1,6 @@
 import * as z from 'zod';
 import { NextResponse } from 'next/server';
+import { localizedJson } from '@/i18n/server';
 import { MAX_PDF_BYTES } from '@/lib/book-security.mjs';
 import { getCurrentUser } from '@/lib/auth';
 import { roleIsAllowed } from '@/lib/auth-policy.mjs';
@@ -49,8 +50,8 @@ async function readBoundedBody(request: Request) {
 
 export async function POST(request: Request) {
   const user = await getCurrentUser();
-  if (!user) return NextResponse.json({ error: 'Authentication required.' }, { status: 401 });
-  if (!roleIsAllowed(user.role, ['ADMIN'])) return NextResponse.json({ error: 'Administrator access required.' }, { status: 403 });
+  if (!user) return localizedJson({ error: 'Authentication required.' }, { status: 401 });
+  if (!roleIsAllowed(user.role, ['ADMIN'])) return localizedJson({ error: 'Administrator access required.' }, { status: 403 });
 
   let body: Buffer;
   let form: FormData;
@@ -66,19 +67,19 @@ export async function POST(request: Request) {
     form = await parserRequest.formData();
   } catch (error) {
     const status = error instanceof RangeError ? 413 : 400;
-    return NextResponse.json({ error: status === 413 ? `PDF uploads are limited to ${MAX_PDF_BYTES / (1024 * 1024)} MB.` : 'Invalid multipart upload.' }, { status });
+    return localizedJson({ error: status === 413 ? `PDF uploads are limited to ${MAX_PDF_BYTES / (1024 * 1024)} MB.` : 'Invalid multipart upload.' }, { status });
   }
 
   if (form.getAll('title').length !== 1 || form.getAll('author').length !== 1 || form.getAll('description').length !== 1 || form.getAll('bookType').length !== 1 || form.getAll('gradeId').length !== 1 || form.getAll('subjectId').length !== 1 || form.getAll('isPublished').length > 1 || form.getAll('file').length > 1 || form.getAll('cover').length > 1 || form.getAll('fileKey').length > 1 || form.getAll('coverKey').length > 1 || form.getAll('bookId').length > 1) {
-    return NextResponse.json({ error: 'Upload fields must each be provided once.' }, { status: 400 });
+    return localizedJson({ error: 'Upload fields must each be provided once.' }, { status: 400 });
   }
   const publishValue = form.get('isPublished');
   if (publishValue !== null && publishValue !== 'on') {
-    return NextResponse.json({ error: 'Invalid publication setting.' }, { status: 400 });
+    return localizedJson({ error: 'Invalid publication setting.' }, { status: 400 });
   }
   const accessAllValue = form.get('accessAllStudents');
   if (accessAllValue !== null && accessAllValue !== 'on') {
-    return NextResponse.json({ error: 'Invalid access setting.' }, { status: 400 });
+    return localizedJson({ error: 'Invalid access setting.' }, { status: 400 });
   }
   const allowedGradeIds = form.getAll('allowedGradeIds').filter((value): value is string => typeof value === 'string');
   const parsed = MetadataSchema.safeParse({
@@ -93,11 +94,11 @@ export async function POST(request: Request) {
     isPublished: publishValue === 'on',
     bookId: form.get('bookId') || undefined,
   });
-  if (!parsed.success) return NextResponse.json({ error: 'Check the book details, grade, and subject.' }, { status: 400 });
+  if (!parsed.success) return localizedJson({ error: 'Check the book details, grade, and subject.' }, { status: 400 });
 
   // The PDF and cover arrive either as files (local storage) or as keys of objects
   // the browser uploaded directly to Supabase Storage. Both are validated in acceptUpload().
-  if (!parsed.data.bookId && !hasUpload(form, 'file')) return NextResponse.json({ error: 'Choose a PDF file.' }, { status: 400 });
+  if (!parsed.data.bookId && !hasUpload(form, 'file')) return localizedJson({ error: 'Choose a PDF file.' }, { status: 400 });
 
   const [subject, existingBook] = await Promise.all([
     parsed.data.bookType === 'GRADE_BASED' && parsed.data.subjectId
@@ -106,10 +107,10 @@ export async function POST(request: Request) {
     parsed.data.bookId ? prisma.book.findUnique({ where: { id: parsed.data.bookId }, select: { id: true } }) : Promise.resolve(null),
   ]);
   if (parsed.data.bookType === 'GRADE_BASED') {
-    if (!parsed.data.gradeId || !parsed.data.subjectId) return NextResponse.json({ error: 'Choose a grade and subject.' }, { status: 400 });
-    if (!subject || subject.gradeId !== parsed.data.gradeId) return NextResponse.json({ error: 'Choose a subject that belongs to the selected grade.' }, { status: 400 });
+    if (!parsed.data.gradeId || !parsed.data.subjectId) return localizedJson({ error: 'Choose a grade and subject.' }, { status: 400 });
+    if (!subject || subject.gradeId !== parsed.data.gradeId) return localizedJson({ error: 'Choose a subject that belongs to the selected grade.' }, { status: 400 });
   }
-  if (parsed.data.bookId && !existingBook) return NextResponse.json({ error: 'Book not found.' }, { status: 404 });
+  if (parsed.data.bookId && !existingBook) return localizedJson({ error: 'Book not found.' }, { status: 404 });
 
   let generatedPath: string | null = null;
   let generatedCoverPath: string | null = null;
@@ -157,7 +158,7 @@ export async function POST(request: Request) {
         await removeObjectQuietly(generatedPath, 'book deleted during update');
         await removeObjectQuietly(generatedCoverPath, 'book deleted during update');
         committed = true; // nothing left to clean up in the catch block
-        return NextResponse.json({ error: 'Book not found.' }, { status: 404 });
+        return localizedJson({ error: 'Book not found.' }, { status: 404 });
       }
       committed = true;
       // Replaced files are removed only after the database points at the new ones.
@@ -195,9 +196,9 @@ export async function POST(request: Request) {
       await removeObjectQuietly(generatedPath, 'book save failed');
       await removeObjectQuietly(generatedCoverPath, 'book save failed');
     }
-    if (error instanceof UploadRejectedError) return NextResponse.json({ error: error.message }, { status: 400 });
+    if (error instanceof UploadRejectedError) return localizedJson({ error: error.message }, { status: 400 });
     console.error('[admin/books] Book could not be saved', error);
-    if (error instanceof StorageTimeoutError) return NextResponse.json({ error: 'File storage did not respond in time. Nothing was changed; please try again.' }, { status: 504 });
-    return NextResponse.json({ error: 'Book could not be saved. Check storage configuration and try again.' }, { status: 500 });
+    if (error instanceof StorageTimeoutError) return localizedJson({ error: 'File storage did not respond in time. Nothing was changed; please try again.' }, { status: 504 });
+    return localizedJson({ error: 'Book could not be saved. Check storage configuration and try again.' }, { status: 500 });
   }
 }

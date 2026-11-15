@@ -3,6 +3,7 @@
 import argon2 from 'argon2';
 import * as z from 'zod';
 import { requireRole } from '@/lib/auth';
+import { localizeResult } from '@/i18n/server';
 import { prisma } from '@/lib/prisma';
 
 export type StudentActionState = { error?: string; success?: string };
@@ -18,7 +19,7 @@ const CreateStudentSchema = z.object({
   message: 'Passwords do not match.',
 });
 
-export async function createStudent(_state: StudentActionState, formData: FormData): Promise<StudentActionState> {
+async function createStudentImpl(_state: StudentActionState, formData: FormData): Promise<StudentActionState> {
   await requireRole('ADMIN');
 
   const parsed = CreateStudentSchema.safeParse({
@@ -69,7 +70,7 @@ const PinSchema = z.object({
 });
 
 /** Sets (or changes) a student's 4-digit reading PIN. Admins only; only a hash is stored. */
-export async function setReadingPin(_state: StudentActionState, formData: FormData): Promise<StudentActionState> {
+async function setReadingPinImpl(_state: StudentActionState, formData: FormData): Promise<StudentActionState> {
   await requireRole('ADMIN');
   const parsed = PinSchema.safeParse({ studentId: formData.get('studentId'), pin: formData.get('pin') });
   if (!parsed.success) return { error: 'Enter exactly 4 digits.' };
@@ -80,10 +81,15 @@ export async function setReadingPin(_state: StudentActionState, formData: FormDa
 }
 
 /** Removes a student's reading PIN (they then switch readers with their password). */
-export async function clearReadingPin(_state: StudentActionState, formData: FormData): Promise<StudentActionState> {
+async function clearReadingPinImpl(_state: StudentActionState, formData: FormData): Promise<StudentActionState> {
   await requireRole('ADMIN');
   const studentId = z.string().trim().min(1).max(100).safeParse(formData.get('studentId'));
   if (!studentId.success) return { error: 'Invalid student.' };
   const { count } = await prisma.user.updateMany({ where: { id: studentId.data, role: 'STUDENT' }, data: { readingPinHash: null } });
   return count ? { success: 'Reading PIN removed.' } : { error: 'Student not found.' };
 }
+
+// Exported actions return their messages in the visitor's language.
+export async function createStudent(...args: Parameters<typeof createStudentImpl>) { return localizeResult(await createStudentImpl(...args)); }
+export async function setReadingPin(...args: Parameters<typeof setReadingPinImpl>) { return localizeResult(await setReadingPinImpl(...args)); }
+export async function clearReadingPin(...args: Parameters<typeof clearReadingPinImpl>) { return localizeResult(await clearReadingPinImpl(...args)); }

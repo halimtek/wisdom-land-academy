@@ -4,6 +4,7 @@ import * as z from 'zod';
 import { parsePublicationRequest, storageKeysToRemove } from '@/lib/admin-books.mjs';
 import { requireRole } from '@/lib/auth';
 import { removeObject } from '@/lib/storage';
+import { localizeResult } from '@/i18n/server';
 import { prisma } from '@/lib/prisma';
 import { revalidatePublicPages } from '@/lib/revalidate-public';
 
@@ -13,7 +14,7 @@ const IdSchema = z.string().trim().min(1).max(100);
 const GradeNameSchema = z.string().trim().min(1).max(80);
 const SubjectNameSchema = z.string().trim().min(1).max(100);
 
-export async function createGrade(_state: BookActionState, formData: FormData): Promise<BookActionState> {
+async function createGradeImpl(_state: BookActionState, formData: FormData): Promise<BookActionState> {
   await requireRole('ADMIN');
   const parsed = GradeNameSchema.safeParse(formData.get('name'));
   if (!parsed.success) return { error: 'Enter a grade name (up to 80 characters).' };
@@ -30,7 +31,7 @@ export async function createGrade(_state: BookActionState, formData: FormData): 
   return { success: 'Grade added. You can now add subjects for it.' };
 }
 
-export async function createSubject(_state: BookActionState, formData: FormData): Promise<BookActionState> {
+async function createSubjectImpl(_state: BookActionState, formData: FormData): Promise<BookActionState> {
   await requireRole('ADMIN');
   const gradeId = IdSchema.safeParse(formData.get('gradeId'));
   const name = SubjectNameSchema.safeParse(formData.get('name'));
@@ -69,7 +70,7 @@ async function storageReferenceCount(key: string) {
  * key needs the row) cannot slip in between the check and the delete, and storage
  * cleanup uses exactly the files the deleted row pointed to.
  */
-export async function deleteBookById(bookId: unknown): Promise<BookActionState> {
+async function deleteBookByIdImpl(bookId: unknown): Promise<BookActionState> {
   await requireRole('ADMIN');
   const parsedId = IdSchema.safeParse(bookId);
   if (!parsedId.success) return { error: 'Invalid book.' };
@@ -113,7 +114,7 @@ export async function deleteBookById(bookId: unknown): Promise<BookActionState> 
  * Publishes or unpublishes one or more books. Validated and authorized on the
  * server; only books whose state actually changes are updated.
  */
-export async function setBooksPublication(input: unknown): Promise<PublicationResult> {
+async function setBooksPublicationImpl(input: unknown): Promise<PublicationResult> {
   await requireRole('ADMIN');
   const request = parsePublicationRequest(input);
   if (!request.ok) return { error: request.error };
@@ -128,7 +129,7 @@ export async function setBooksPublication(input: unknown): Promise<PublicationRe
   return { success: `${count} ${count === 1 ? 'book' : 'books'} ${verb}.`, updated: count };
 }
 
-export async function grantBookPermission(_state: BookActionState, formData: FormData): Promise<BookActionState> {
+async function grantBookPermissionImpl(_state: BookActionState, formData: FormData): Promise<BookActionState> {
   await requireRole('ADMIN');
   const bookId = IdSchema.safeParse(formData.get('bookId'));
   const userId = IdSchema.safeParse(formData.get('userId'));
@@ -146,7 +147,7 @@ export async function grantBookPermission(_state: BookActionState, formData: For
   return { success: 'Student access granted.' };
 }
 
-export async function revokeBookPermission(_state: BookActionState, formData: FormData): Promise<BookActionState> {
+async function revokeBookPermissionImpl(_state: BookActionState, formData: FormData): Promise<BookActionState> {
   await requireRole('ADMIN');
   const bookId = IdSchema.safeParse(formData.get('bookId'));
   const userId = IdSchema.safeParse(formData.get('userId'));
@@ -154,3 +155,11 @@ export async function revokeBookPermission(_state: BookActionState, formData: Fo
   await prisma.bookPermission.deleteMany({ where: { bookId: bookId.data, userId: userId.data } });
   return { success: 'Student access removed.' };
 }
+
+// Exported actions return their messages in the visitor's language.
+export async function createGrade(...args: Parameters<typeof createGradeImpl>) { return localizeResult(await createGradeImpl(...args)); }
+export async function createSubject(...args: Parameters<typeof createSubjectImpl>) { return localizeResult(await createSubjectImpl(...args)); }
+export async function deleteBookById(...args: Parameters<typeof deleteBookByIdImpl>) { return localizeResult(await deleteBookByIdImpl(...args)); }
+export async function setBooksPublication(...args: Parameters<typeof setBooksPublicationImpl>) { return localizeResult(await setBooksPublicationImpl(...args)); }
+export async function grantBookPermission(...args: Parameters<typeof grantBookPermissionImpl>) { return localizeResult(await grantBookPermissionImpl(...args)); }
+export async function revokeBookPermission(...args: Parameters<typeof revokeBookPermissionImpl>) { return localizeResult(await revokeBookPermissionImpl(...args)); }

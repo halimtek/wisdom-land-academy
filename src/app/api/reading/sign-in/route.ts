@@ -1,6 +1,6 @@
+import { localizedJson } from '@/i18n/server';
 import argon2 from 'argon2';
 import { randomBytes } from 'node:crypto';
-import { NextResponse } from 'next/server';
 import * as z from 'zod';
 import { loginLimits } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
@@ -8,7 +8,8 @@ import { readJsonBody, recordAttempt, rememberProfile, startReaderSession } from
 
 const Body = z.object({ username: z.string().trim().min(1).max(80), password: z.string().min(1).max(256) });
 let fallbackHash: Promise<string> | undefined;
-const json = (body: object, status = 200) => NextResponse.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
+// Error messages are returned in the visitor's language.
+const json = (body: object, status = 200) => localizedJson(body, { status, headers: { 'Cache-Control': 'no-store' } });
 
 // First sign-in of a student on this device (username + password). Students only.
 export async function POST(request: Request) {

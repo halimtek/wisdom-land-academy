@@ -5,17 +5,20 @@ import Link from 'next/link';
 import { Menu, X } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
+import { LanguageSwitcher, useI18n } from '@/i18n/client';
+import { splitLocale } from '@/i18n/locales.mjs';
+import type { Messages } from '@/i18n/messages/en';
 
-const navigation = [
-  { href: '/', label: 'Home' },
-  { href: '/about', label: 'About Us' },
-  { href: '/academics', label: 'Academics' },
-  { href: '/activities', label: 'Activities' },
-  { href: '/students', label: 'Students' },
-  { href: '/staff', label: 'Our Staff' },
-  { href: '/news', label: 'News & Announcements' },
-  { href: '/library', label: 'Digital Library' },
-  { href: '/contact', label: 'Contact Us' },
+const navigation: { href: string; label: keyof Messages['nav'] }[] = [
+  { href: '/', label: 'home' },
+  { href: '/about', label: 'about' },
+  { href: '/academics', label: 'academics' },
+  { href: '/activities', label: 'activities' },
+  { href: '/students', label: 'students' },
+  { href: '/staff', label: 'staff' },
+  { href: '/news', label: 'news' },
+  { href: '/library', label: 'library' },
+  { href: '/contact', label: 'contact' },
 ];
 
 // Must match the breakpoint in globals.css ("WLA school header & navigation").
@@ -29,6 +32,8 @@ export function SchoolNavigation({
   logoImageAlt: string | null;
 }) {
   const pathname = usePathname();
+  const { m, path } = useI18n();
+  const current = splitLocale(pathname).rest; // the page without its /en, /am… prefix
   // The menu is "open for" a specific route, so it closes automatically after
   // any navigation (link tap, back/forward) without an extra effect.
   const [openFor, setOpenFor] = useState<string | null>(null);
@@ -90,14 +95,14 @@ export function SchoolNavigation({
       >
         <div className="school-header-inner">
           <Link
-            href="/"
+            href={path('/')}
             className="school-brand"
             onClick={close}
-            aria-label="Wisdom Land Academy home"
+            aria-label={m.nav.homeLabel}
           >
             <Image
               src={logoImagePath ? '/api/site-media/logo' : '/images/wla-emblem.png'}
-              alt={logoImageAlt || 'Wisdom Land Academy'}
+              alt={logoImageAlt || m.common.schoolName}
               width={58}
               height={58}
               unoptimized={Boolean(logoImagePath)}
@@ -105,16 +110,19 @@ export function SchoolNavigation({
             />
 
             <span className="school-brand-name">
-              WISDOM LAND <b>ACADEMY</b>
-              <small>GRADES 1–8</small>
+              {/* The brand stays in Latin letters and left-to-right in every language. */}
+              <span className="school-brand-words" dir="ltr">{m.common.brandFirst} <b>{m.common.brandSecond}</b></span>
+              <small>{m.common.gradesUpper}</small>
             </span>
           </Link>
+
+          <LanguageSwitcher className="school-lang-switch" />
 
           <button
             ref={toggleRef}
             className="school-menu-toggle"
             type="button"
-            aria-label={open ? 'Close navigation menu' : 'Open navigation menu'}
+            aria-label={open ? m.nav.closeMenu : m.nav.openMenu}
             aria-expanded={open}
             aria-controls="school-main-navigation"
             onClick={() => setOpenFor(open ? null : pathname)}
@@ -125,29 +133,29 @@ export function SchoolNavigation({
           <nav
             id="school-main-navigation"
             className={`school-main-navigation${open ? ' school-navigation-open' : ''}`}
-            aria-label="Main navigation"
+            aria-label={m.nav.mainNavigation}
           >
             {navigation.map(({ href, label }) => {
               const active =
                 href === '/'
-                  ? pathname === '/'
-                  : pathname === href || pathname.startsWith(`${href}/`);
+                  ? current === '/'
+                  : current === href || current.startsWith(`${href}/`);
 
               return (
                 <Link
                   key={href}
-                  href={href}
+                  href={path(href)}
                   className={active ? 'school-nav-link active' : 'school-nav-link'}
                   aria-current={active ? 'page' : undefined}
                   onClick={close}
                 >
-                  {label}
+                  {m.nav[label]}
                 </Link>
               );
             })}
 
-            <Link className="school-admin-login" href="/login?mode=ADMIN" onClick={close}>
-              Admin Login <span aria-hidden="true">↗</span>
+            <Link className="school-admin-login" href={path('/login?mode=ADMIN')} onClick={close}>
+              {m.nav.adminLogin} <span aria-hidden="true">↗</span>
             </Link>
           </nav>
         </div>

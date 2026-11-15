@@ -4,6 +4,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowLeft, ArrowRight, Images } from 'lucide-react';
 import { useEffect, useRef } from 'react';
+import { useI18n } from '@/i18n/client';
+import { fmt } from '@/i18n/locales.mjs';
 
 export type SchoolGalleryItem = {
   id: string;
@@ -38,33 +40,36 @@ export function SchoolReveal({ children }: { children: React.ReactNode }) {
 
 export function SchoolExperienceGallery({ items }: { items: SchoolGalleryItem[] }) {
   const trackRef = useRef<HTMLDivElement>(null);
+  const { m, locale } = useI18n();
+  // Arabic is right-to-left: "previous" scrolls towards the right.
+  const rtl = locale === 'ar';
 
   function move(direction: -1 | 1) {
     const track = trackRef.current;
     if (!track) return;
-    track.scrollBy({ left: direction * Math.max(track.clientWidth * 0.78, 290), behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    track.scrollBy({ left: (rtl ? -direction : direction) * Math.max(track.clientWidth * 0.78, 290), behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
   }
 
   function handleKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
     if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
     event.preventDefault();
-    move(event.key === 'ArrowLeft' ? -1 : 1);
+    move((event.key === 'ArrowLeft') !== rtl ? -1 : 1);
   }
 
-  if (!items.length) return <div className="school-gallery-empty"><span className="school-gallery-empty-icon"><Images size={24} /></span><div><h3>School photographs are being prepared</h3><p>Approved photos will appear after an administrator publishes school content with images and descriptions.</p></div></div>;
+  if (!items.length) return <div className="school-gallery-empty"><span className="school-gallery-empty-icon"><Images size={24} /></span><div><h3>{m.gallery.emptyTitle}</h3><p>{m.gallery.emptyText}</p></div></div>;
 
-  return <div className="school-gallery" role="region" aria-roledescription="carousel" aria-label="Published Wisdom Land Academy photos">
+  return <div className="school-gallery" role="region" aria-roledescription="carousel" aria-label={m.gallery.label}>
     <div className="school-gallery-controls">
-      <p>Swipe or use the arrow keys to browse published photos.</p>
+      <p>{m.gallery.hint}</p>
       <div>
-        <button type="button" className="school-gallery-control" aria-label="Show previous photos" onClick={() => move(-1)} disabled={items.length < 2}><ArrowLeft size={19} /></button>
-        <button type="button" className="school-gallery-control" aria-label="Show next photos" onClick={() => move(1)} disabled={items.length < 2}><ArrowRight size={19} /></button>
+        <button type="button" className="school-gallery-control" aria-label={m.gallery.previous} onClick={() => move(-1)} disabled={items.length < 2}><ArrowLeft size={19} className="flip-rtl" /></button>
+        <button type="button" className="school-gallery-control" aria-label={m.gallery.next} onClick={() => move(1)} disabled={items.length < 2}><ArrowRight size={19} className="flip-rtl" /></button>
       </div>
     </div>
-    <div className="school-gallery-track" ref={trackRef} tabIndex={0} onKeyDown={handleKeyDown} aria-label="Photo slides">
-      {items.map((item, index) => <article className="school-gallery-slide" key={item.id} role="group" aria-roledescription="slide" aria-label={`${index + 1} of ${items.length}`}>
+    <div className="school-gallery-track" ref={trackRef} tabIndex={0} onKeyDown={handleKeyDown} aria-label={m.gallery.slides}>
+      {items.map((item, index) => <article className="school-gallery-slide" key={item.id} role="group" aria-roledescription="slide" aria-label={fmt(m.gallery.slideOf, { n: index + 1, total: items.length })}>
         <Image src={item.imageUrl} alt={item.imageAlt} width={760} height={560} sizes="(max-width: 700px) 86vw, (max-width: 1100px) 54vw, 38vw" unoptimized />
-        <div className="school-gallery-slide-copy"><span>{item.category}</span><h3>{item.title}</h3>{item.summary && <p>{item.summary}</p>}<Link href={item.href}>Explore {item.category.toLowerCase()} <ArrowRight size={15} /></Link></div>
+        <div className="school-gallery-slide-copy"><span>{item.category}</span><h3 dir="auto">{item.title}</h3>{item.summary && <p dir="auto">{item.summary}</p>}<Link href={item.href}>{m.gallery.explore} {item.category.toLocaleLowerCase(locale)} <ArrowRight size={15} className="flip-rtl" /></Link></div>
       </article>)}
     </div>
   </div>;

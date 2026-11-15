@@ -1,5 +1,5 @@
+import { localizedJson } from '@/i18n/server';
 import argon2 from 'argon2';
-import { NextResponse } from 'next/server';
 import * as z from 'zod';
 import { prisma } from '@/lib/prisma';
 import { pinLimits, readJsonBody, recordAttempt, rememberedProfiles, startReaderSession, touchProfile } from '@/lib/reader-auth';
@@ -9,7 +9,8 @@ const Body = z.object({
   pin: z.string().regex(/^\d{4}$/).optional(),
   password: z.string().min(1).max(256).optional(),
 }).refine((b) => Boolean(b.pin) !== Boolean(b.password), 'Enter a PIN or a password.');
-const json = (body: object, status = 200) => NextResponse.json(body, { status, headers: { 'Cache-Control': 'no-store' } });
+// Error messages are returned in the visitor's language.
+const json = (body: object, status = 200) => localizedJson(body, { status, headers: { 'Cache-Control': 'no-store' } });
 
 // Switch to a student remembered on THIS device: needs the device token (cookie) and
 // the student's PIN (or password when no PIN is set). Rate limited per profile.

@@ -13,7 +13,7 @@ const REQUIRED_TARGET = 'rhel-openssl-3.0.x';
 const ENGINE = engineFileName(REQUIRED_TARGET);
 const ENGINE_REL = `${GENERATED_CLIENT_DIR}/${ENGINE}`;
 // Routes that must reach the database in production (book pages, PDFs, covers/images).
-const CRITICAL_TRACES = ['library/books/[id]/page.js.nft.json', 'api/books/[id]/file/route.js.nft.json', 'api/site-media/[key]/route.js.nft.json'];
+const CRITICAL_TRACES = ['[lang]/library/books/[id]/page.js.nft.json', 'api/books/[id]/file/route.js.nft.json', 'api/site-media/[key]/route.js.nft.json'];
 
 const root = process.cwd();
 const fail = (message) => { console.error(`\n[verify-prisma-engine] FAILED: ${message}\n`); process.exit(1); };

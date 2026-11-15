@@ -1,5 +1,6 @@
 import * as z from 'zod';
 import { NextResponse } from 'next/server';
+import { localizedJson } from '@/i18n/server';
 import { getCurrentUser } from '@/lib/auth';
 import { roleIsAllowed } from '@/lib/auth-policy.mjs';
 import { createSignedUpload, storageDriver, StorageTimeoutError } from '@/lib/storage';
@@ -22,11 +23,11 @@ const RequestSchema = z.object({
  */
 export async function POST(request: Request) {
   const user = await getCurrentUser();
-  if (!user) return NextResponse.json({ error: 'Authentication required.' }, { status: 401 });
-  if (!roleIsAllowed(user.role, ['ADMIN'])) return NextResponse.json({ error: 'Administrator access required.' }, { status: 403 });
+  if (!user) return localizedJson({ error: 'Authentication required.' }, { status: 401 });
+  if (!roleIsAllowed(user.role, ['ADMIN'])) return localizedJson({ error: 'Administrator access required.' }, { status: 403 });
 
   const parsed = RequestSchema.safeParse(await request.json().catch(() => null));
-  if (!parsed.success) return NextResponse.json({ error: 'Invalid upload request.' }, { status: 400 });
+  if (!parsed.success) return localizedJson({ error: 'Invalid upload request.' }, { status: 400 });
 
   if (storageDriver() !== 'supabase') return NextResponse.json({ direct: false }, { headers: { 'Cache-Control': 'no-store' } });
 
@@ -38,9 +39,9 @@ export async function POST(request: Request) {
       { headers: { 'Cache-Control': 'no-store' } },
     );
   } catch (error) {
-    if (error instanceof UploadRejectedError) return NextResponse.json({ error: error.message }, { status: 400 });
+    if (error instanceof UploadRejectedError) return localizedJson({ error: error.message }, { status: 400 });
     console.error('[uploads] Could not prepare a direct upload', error);
-    if (error instanceof StorageTimeoutError) return NextResponse.json({ error: 'File storage did not respond in time. Try again.' }, { status: 504 });
-    return NextResponse.json({ error: 'File storage is unavailable. Try again later.' }, { status: 503 });
+    if (error instanceof StorageTimeoutError) return localizedJson({ error: 'File storage did not respond in time. Try again.' }, { status: 504 });
+    return localizedJson({ error: 'File storage is unavailable. Try again later.' }, { status: 503 });
   }
 }
